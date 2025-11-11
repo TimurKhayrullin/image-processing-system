@@ -1,5 +1,8 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -I../include -Iinclude -MMD -MP
+CXXFLAGS := -std=c++17 -Wall -Wextra -I../include -Iinclude \
+            -I/opt/homebrew/include -MMD -MP
+LDFLAGS := -L/opt/homebrew/lib -lzmq
+
 SRC_DIR := src
 OBJ_DIR := ../build/feature_extractor
 BIN_DIR := ../build/feature_extractor
@@ -14,7 +17,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)

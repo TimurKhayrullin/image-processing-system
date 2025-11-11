@@ -9,5 +9,4 @@
 
 namespace fs = std::filesystem;
 
-std::string generateImage(const std::string& input);
 bool has_image_extension(const fs::path& file_path);
