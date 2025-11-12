@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
         for (size_t i = 0; i < image_files.size(); i++) {
             const auto& img = image_files[i];
             std::string job = "Job " + img.string();
-            std::cout << "Sending string  " << i+1 << "/" << image_files.size() << ": " << job << '\n';
+            // std::cout << "Sending string  " << i+1 << "/" << image_files.size() << ": " << job << '\n';
             sender.send(zmq::buffer(job), zmq::send_flags::none);
         }
     }

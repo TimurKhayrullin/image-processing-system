@@ -54,7 +54,7 @@ int main() {
 
                 std::cout << "Processed into: " << processed << std::endl;
 
-                std::string combined = data + '\n' + processed;
+                std::string combined = data + '|' + processed;
 
                 publisher.send(zmq::buffer(combined), zmq::send_flags::none);
             }

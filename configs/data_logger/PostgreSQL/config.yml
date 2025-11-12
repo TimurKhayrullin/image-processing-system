@@ -1,0 +1,42 @@
+# PostgreSQL configuration for data_logger
+
+data_handling:
+  split_payload: false           # true = split image & feature inserts, false = store combined payload
+  data_format: "string"         # informational
+  max_db_size_mb: 1024
+  t_size_check_period: 30        # seconds (e.g., __ minutes)
+  insert_count_size_check: 10000   # check after every __ inserts
+
+database:
+  host: "127.0.0.1"
+  port: 5432
+  name: "telemetry"
+  user: "postgres"
+  password: "mypass"
+
+tables:
+  images:
+    enabled: true
+    name: "images"
+    columns:
+      id: "SERIAL PRIMARY KEY"
+      timestamp: "TIMESTAMP DEFAULT NOW()"
+      image_data: "TEXT"
+      metadata: "TEXT"
+
+  features:
+    enabled: true
+    name: "features"
+    columns:
+      id: "SERIAL PRIMARY KEY"
+      image_id: "INT REFERENCES images(id) ON DELETE CASCADE"
+      feature_vector: "TEXT"
+      model_version: "TEXT"
+
+  payloads:
+    enabled: true
+    name: "payloads"
+    columns:
+      id: "SERIAL PRIMARY KEY"
+      timestamp: "TIMESTAMP DEFAULT NOW()"
+      payload_data: "TEXT"
