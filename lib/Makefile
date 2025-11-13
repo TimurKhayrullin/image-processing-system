@@ -4,7 +4,8 @@ CXX := g++
 # ------------------------------------------------------------
 # Include paths for header files inside lib/
 # ------------------------------------------------------------
-INCLUDES := -I..
+INCLUDES := \
+	-Iinclude
 
 # ------------------------------------------------------------
 # Compiler flags
@@ -14,7 +15,7 @@ CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
 # ------------------------------------------------------------
 # Directories
 # ------------------------------------------------------------
-SRC_DIR := .
+SRC_DIR := src
 BUILD_DIR := ../build/lib
 LIB_NAME := libshared.a
 TARGET := $(BUILD_DIR)/$(LIB_NAME)

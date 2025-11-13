@@ -20,7 +20,7 @@ public:
     virtual ~ImageHandler() = default;
 
     // Checks if this handler can load this file (usually by extension)
-    virtual bool canHandle(const std::string &filepath) const = 0;
+    virtual bool can_handle(const std::string &filepath) const = 0;
 
     // Load and decode image into raw pixels + shape
     virtual bool load(const std::string &filepath,
@@ -32,7 +32,7 @@ public:
 
 class JpegHandler : public ImageHandler {
 public:
-    bool canHandle(const std::string &filepath) const override;
+    bool can_handle(const std::string &filepath) const override;
 
     bool load(const std::string &filepath,
               std::vector<uint8_t> &outPixels,
@@ -41,7 +41,7 @@ public:
 
 class TiffHandler : public ImageHandler {
 public:
-    bool canHandle(const std::string &filepath) const override;
+    bool can_handle(const std::string &filepath) const override;
 
     bool load(const std::string &filepath,
               std::vector<uint8_t> &outPixels,
@@ -50,7 +50,7 @@ public:
 
 class PngHandler : public ImageHandler {
 public:
-    bool canHandle(const std::string &filepath) const override;
+    bool can_handle(const std::string &filepath) const override;
 
     bool load(const std::string &filepath,
               std::vector<uint8_t> &outPixels,
@@ -61,7 +61,7 @@ class ImageHandlerFactory {
 public:
     ImageHandlerFactory();
 
-    const ImageHandler* getHandler(const std::string &filepath) const;
+    const ImageHandler* get_handler(const std::string &filepath) const;
 
 private:
     std::vector<std::unique_ptr<ImageHandler>> handlers;

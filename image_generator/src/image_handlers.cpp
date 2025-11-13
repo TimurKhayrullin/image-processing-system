@@ -3,7 +3,7 @@
 #include "image_handlers.hpp"
 
 // jpeg handler
-bool JpegHandler::canHandle(const std::string &filepath) const {
+bool JpegHandler::can_handle(const std::string &filepath) const {
     return endsWithIgnoreCase(filepath, ".jpg") ||
             endsWithIgnoreCase(filepath, ".jpeg");
 }
@@ -27,7 +27,7 @@ bool JpegHandler::load(const std::string &filepath,
 }
 
 // Tiff handler
-bool TiffHandler::canHandle(const std::string &filepath) const {
+bool TiffHandler::can_handle(const std::string &filepath) const {
     return endsWithIgnoreCase(filepath, ".tif") ||
             endsWithIgnoreCase(filepath, ".tiff");
 }
@@ -51,7 +51,7 @@ bool TiffHandler::load(const std::string &filepath,
 }
 
 // png handler
-bool PngHandler::canHandle(const std::string &filepath) const {
+bool PngHandler::can_handle(const std::string &filepath) const {
     return endsWithIgnoreCase(filepath, ".png");
 }
 
@@ -74,9 +74,9 @@ bool PngHandler::load(const std::string &filepath,
 }
 
 // handler factory implementation
-const ImageHandler* ImageHandlerFactory::getHandler(const std::string &filepath) const {
+const ImageHandler* ImageHandlerFactory::get_handler(const std::string &filepath) const {
     for (const auto& h : handlers) {
-        if (h->canHandle(filepath))
+        if (h->can_handle(filepath))
             return h.get();
     }
     return nullptr;

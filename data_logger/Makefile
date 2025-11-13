@@ -1,13 +1,23 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -I../lib -Iinclude \
-            -I/opt/homebrew/include -I/opt/homebrew/opt/libpq/include \
-            -I/opt/homebrew/opt/yaml-cpp/include -I/opt/homebrew/opt/zeromq/include -MMD -MP
 
-LDFLAGS := -L/opt/homebrew/lib \
-           -L/opt/homebrew/opt/libpq/lib \
-           -L/opt/homebrew/opt/yaml-cpp/lib \
-           -L/opt/homebrew/opt/zeromq/lib \
-           -lpqxx -lpq -lyaml-cpp -lzmq
+INCLUDES := \
+        -I../lib/include \
+        -Iinclude \
+        -I/opt/homebrew/include \
+        -I/opt/homebrew/opt/libpq/include \
+        -I/opt/homebrew/opt/yaml-cpp/include \
+        -I/opt/homebrew/opt/zeromq/include
+
+CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
+
+LDFLAGS := \
+        -L../build/lib \
+        -lshared \
+        -L/opt/homebrew/lib \
+        -L/opt/homebrew/opt/libpq/lib \
+        -L/opt/homebrew/opt/yaml-cpp/lib \
+        -L/opt/homebrew/opt/zeromq/lib \
+        -lpqxx -lpq -lyaml-cpp -lzmq
 
 SRC_DIR := src
 OBJ_DIR := ../build/data_logger

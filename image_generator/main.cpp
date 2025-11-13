@@ -1,5 +1,6 @@
 #include "shared.hpp"
 #include "shutdown_handler.hpp"
+#include "image_message.hpp"
 #include "image_generator.hpp"
 #include "image_handlers.hpp"
 #include <iostream>
@@ -7,12 +8,6 @@
 #include <zmq.hpp>
 
 namespace fs = std::filesystem;
-
-static std::atomic<bool> keepRunning(true);
-
-void signalHandler(int) {
-    keepRunning = false;
-}
 
 int main(int argc, char* argv[]) {
 
@@ -75,7 +70,7 @@ int main(int argc, char* argv[]) {
                 continue;
 
             std::string filepath = entry.path().string();
-            const ImageHandler* handler = factory.getHandler(filepath);
+            const ImageHandler* handler = factory.get_handler(filepath);
 
             if (!handler) {
                 std::cerr << "[WARN] No handler for " << filepath << "\n";

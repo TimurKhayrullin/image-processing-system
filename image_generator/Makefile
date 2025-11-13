@@ -5,7 +5,7 @@ CXX := g++
 # Homebrew installs OpenCV under /opt/homebrew/include/opencv4
 # ------------------------------------------------------------
 INCLUDES := \
-    -I../lib \
+    -I../lib/include \
     -Iinclude \
     -I/opt/homebrew/include \
     -I/opt/homebrew/include/opencv4

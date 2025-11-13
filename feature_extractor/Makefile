@@ -1,7 +1,17 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -I../lib -Iinclude \
-            -I/opt/homebrew/include -MMD -MP
-LDFLAGS := -L/opt/homebrew/lib -lzmq
+
+INCLUDES := \
+    -I../lib/include \
+    -Iinclude \
+	-I/opt/homebrew/include
+
+CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
+
+LDFLAGS := \
+	-L../build/lib \
+    -lshared \
+	-L/opt/homebrew/lib \
+	-lzmq
 
 SRC_DIR := src
 OBJ_DIR := ../build/feature_extractor

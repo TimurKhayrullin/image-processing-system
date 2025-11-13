@@ -54,3 +54,5 @@ psql -U postgres -d telemetry
 
 ## drop the entire database and recreate it 
 psql -U postgres -d postgres -c "DROP DATABASE telemetry; CREATE DATABASE telemetry;"
+
+TODO: Implement ImageMessage into image_generator/main.cpp
