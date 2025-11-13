@@ -1,11 +1,7 @@
 #include "shared.hpp"
 #include "postgres_database.hpp"
-#include <iostream>
-#include <string>
 #include <csignal>
 #include <atomic>
-#include <algorithm> // For std::transform
-#include <cctype>    // For std::toupper
 #include <zmq.hpp>
 
 static std::atomic<bool> keepRunning(true);

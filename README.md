@@ -10,13 +10,19 @@ This is a distributed image processing system built in C++, capable of generatin
   - `Makefile`
 
 
-## install dependencies
-# MacOS:
+### install dependencies
+## MacOS:
+# barebones functionality
 brew install zmq
 brew install cppzmq
 brew install libpqxx 
 brew install yaml-cpp     
-brew install libpq  
+brew install libpq 
+
+# openCV
+brew install cmake
+brew install opencv
+ 
 # Ubuntu
 sudo apt install libpqxx-dev  # Ubuntu/Debian
 

@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -I../include -Iinclude \
+CXXFLAGS := -std=c++17 -Wall -Wextra -I../lib -Iinclude \
             -I/opt/homebrew/include -I/opt/homebrew/opt/libpq/include \
             -I/opt/homebrew/opt/yaml-cpp/include -I/opt/homebrew/opt/zeromq/include -MMD -MP
 
@@ -15,7 +15,9 @@ BIN_DIR := ../build/data_logger
 EXEC_NAME := data_logger
 TARGET := $(BIN_DIR)/$(EXEC_NAME)
 
-SRCS := $(SRC_DIR)/$(EXEC_NAME).cpp main.cpp
+SRCS := $(SRC_DIR)/database.cpp \
+        $(SRC_DIR)/postgres_database.cpp \
+        main.cpp
 OBJS := $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 

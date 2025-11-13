@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -I../include -Iinclude \
+CXXFLAGS := -std=c++17 -Wall -Wextra -I../lib -Iinclude \
             -I/opt/homebrew/include -MMD -MP
 LDFLAGS := -L/opt/homebrew/lib -lzmq
 

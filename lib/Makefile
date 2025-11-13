@@ -1,50 +1,31 @@
+# Compiler
 CXX := g++
 
 # ------------------------------------------------------------
-# Include paths
-# Homebrew installs OpenCV under /opt/homebrew/include/opencv4
+# Include paths for header files inside lib/
 # ------------------------------------------------------------
-INCLUDES := \
-    -I../lib \
-    -Iinclude \
-    -I/opt/homebrew/include \
-    -I/opt/homebrew/include/opencv4
+INCLUDES := -I..
 
 # ------------------------------------------------------------
-# Compiler and linker flags
+# Compiler flags
 # ------------------------------------------------------------
 CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
 
-# Link ZeroMQ + OpenCV
-LDFLAGS := \
-    -L../build/lib \
-    -lshared \
-    -L/opt/homebrew/lib \
-    -lzmq \
-    -lopencv_core \
-    -lopencv_imgcodecs \
-    -lopencv_highgui \
-    -lopencv_imgproc \
-    -lopencv_features2d
+# ------------------------------------------------------------
+# Directories
+# ------------------------------------------------------------
+SRC_DIR := .
+BUILD_DIR := ../build/lib
+LIB_NAME := libshared.a
+TARGET := $(BUILD_DIR)/$(LIB_NAME)
 
 # ------------------------------------------------------------
-# Directory setup
-# ------------------------------------------------------------
-SRC_DIR := src
-OBJ_DIR := ../build/image_generator
-BIN_DIR := ../build/image_generator
-EXEC_NAME := image_generator
-TARGET := $(BIN_DIR)/$(EXEC_NAME)
-
-# ------------------------------------------------------------
-# Source files
+# Library sources
 # ------------------------------------------------------------
 SRCS := \
-    $(SRC_DIR)/image_generator.cpp \
-    $(SRC_DIR)/image_handlers.cpp \
-    main.cpp
+    $(SRC_DIR)/shutdown_handler.cpp
 
-OBJS := $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
+OBJS := $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
 # ------------------------------------------------------------
@@ -53,16 +34,16 @@ DEPS := $(OBJS:.o=.d)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	@mkdir -p $(BUILD_DIR)
+	ar rcs $(TARGET) $(OBJS)
 
-$(OBJ_DIR)/%.o: %.cpp
+$(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 -include $(DEPS)
 
 clean:
-	rm -rf $(OBJ_DIR)
+	rm -rf $(BUILD_DIR)
 
 .PHONY: all clean

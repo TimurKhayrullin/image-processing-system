@@ -6,6 +6,7 @@
 #include <vector>
 #include <csignal>
 #include <atomic>
+#include <algorithm>
 
 namespace fs = std::filesystem;
 

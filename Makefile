@@ -1,5 +1,5 @@
 # Top-level Makefile for all executables
-SUBDIRS := image_generator feature_extractor data_logger utility/psql_export_csv
+SUBDIRS := lib image_generator feature_extractor data_logger utility/psql_export_csv
 BUILD_DIR := build
 
 # Default target
