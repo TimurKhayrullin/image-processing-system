@@ -42,3 +42,9 @@ psql -h 127.0.0.1 -U postgres -p 5432 -W
 ./build/image_generator/image_generator
 ./build/feature_extractor/feature_extractor
 ./build/data_logger/data_logger
+
+## postgres cli for prompting
+psql -U postgres -d telemetry
+
+## drop the entire database and recreate it 
+psql -U postgres -d postgres -c "DROP DATABASE telemetry; CREATE DATABASE telemetry;"

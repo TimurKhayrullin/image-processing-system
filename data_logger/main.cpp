@@ -1,5 +1,5 @@
 #include "shared.hpp"
-#include "data_logger.hpp"
+#include "postgres_database.hpp"
 #include <iostream>
 #include <string>
 #include <csignal>
