@@ -5,24 +5,24 @@
 #include <csignal>
 
 // Definition of static member
-std::atomic<bool> ShutdownHandler::keepRunning(true);
+std::atomic<bool> ShutdownHandler::keep_running(true);
 
 // Install handlers for all relevant signals
 void ShutdownHandler::init() {
-    std::signal(SIGINT,  handleSignal);   // Ctrl + C
-    std::signal(SIGTERM, handleSignal);   // system kill
-    std::signal(SIGQUIT, handleSignal);   // Ctrl + backslash
-    std::signal(SIGHUP,  handleSignal);   // terminal death or reload
-    std::signal(SIGUSR1, handleSignal);   // user hook
-    std::signal(SIGUSR2, handleSignal);   // user hook
+    std::signal(SIGINT,  handle_signal);   // Ctrl + C
+    std::signal(SIGTERM, handle_signal);   // system kill
+    std::signal(SIGQUIT, handle_signal);   // Ctrl + backslash
+    std::signal(SIGHUP,  handle_signal);   // terminal death or reload
+    std::signal(SIGUSR1, handle_signal);   // user hook
+    std::signal(SIGUSR2, handle_signal);   // user hook
 }
 
 // Returns false when shutdown requested
 bool ShutdownHandler::running() {
-    return keepRunning.load(std::memory_order_relaxed);
+    return keep_running.load(std::memory_order_relaxed);
 }
 
-void ShutdownHandler::handleSignal(int sig) {
+void ShutdownHandler::handle_signal(int sig) {
     switch (sig) {
     case SIGINT:
         std::cerr << "\n[ShutdownHandler] Caught SIGINT (Ctrl+C).\n";
@@ -47,5 +47,5 @@ void ShutdownHandler::handleSignal(int sig) {
         break;
     }
 
-    keepRunning.store(false, std::memory_order_relaxed);
+    keep_running.store(false, std::memory_order_relaxed);
 }

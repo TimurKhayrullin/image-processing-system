@@ -41,7 +41,7 @@ TARGET := $(BIN_DIR)/$(EXEC_NAME)
 # ------------------------------------------------------------
 SRCS := \
     $(SRC_DIR)/image_generator.cpp \
-    $(SRC_DIR)/image_handlers.cpp \
+    $(SRC_DIR)/image_readers.cpp \
     main.cpp
 
 OBJS := $(SRCS:%.cpp=$(OBJ_DIR)/%.o)

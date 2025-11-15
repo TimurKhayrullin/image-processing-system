@@ -8,6 +8,6 @@ public:
     static bool running();
 
 private:
-    static void handleSignal(int sig);
-    static std::atomic<bool> keepRunning;
+    static void handle_signal(int sig);
+    static std::atomic<bool> keep_running;
 };
