@@ -1,26 +1,26 @@
 #include "shared.hpp"
+#include "data_logger.hpp"
+#include "shutdown_handler.hpp"
+#include "message_headers.hpp"
+#include "feature_serialization.hpp"
 #include "postgres_database.hpp"
 #include <csignal>
 #include <atomic>
 #include <zmq.hpp>
 
-static std::atomic<bool> keepRunning(true);
-
-void signalHandler(int) {
-    keepRunning = false;
-}
-
 int main() {
     print_banner("Data Logger Started");
 
-    std::signal(SIGINT, signalHandler);  // Handle Ctrl+C
+    // <--- install signal handlers for shutdown
+    ShutdownHandler::init();
 
+    // initialize database
     PostgresDatabase db("configs/data_logger/PostgreSQL/config.yml");
     db.printStatus();
 
+    // exit if failed to connect to database
     if(!db.isConnected){
         std::cout << "unable to connect to database, terminating\n"; 
-        keepRunning = false;
     }
 
     // Create a ZeroMQ context and subscriber socket
@@ -36,24 +36,39 @@ int main() {
     std::cout << "Listening for messages on ipc:///tmp/features_pub.sock ..." << std::endl;
 
     try {
-        while (keepRunning) {
+        while (ShutdownHandler::running()) {
             zmq::message_t msg;
 
-            // zmq::recv_result_t === std::optional<size_t>
-            zmq::recv_result_t received = subscriber.recv(msg, zmq::recv_flags::none);
+            ImageHeader img_header;
+            std::vector<uint8_t> pixels;
+            SIFTHeader sift_header;
+            std::vector<KeyPointPortable> keypoints;
+            std::vector<uint8_t> desc_mat;
+
+            bool received = recv_image_plus_features(
+                                subscriber,
+                                img_header,
+                                pixels,
+                                sift_header,
+                                keypoints,
+                                desc_mat
+                            );
 
             if (received) {
 
-                std::string data(static_cast<char*>(msg.data()), msg.size());
+                uint64_t timestamp_ns = get_timestamp_ns_utc();
 
-                // std::cout << "Received: " << data << std::endl;
+                std::cout << "Received: image+features#" << img_header.frame_number << "\n";
+                std::cout << "Time to send to extractor: " << (sift_header.timestamp_recieved_ns - img_header.timestamp_ns) / 1'000'000 << "ms\n";
+                std::cout << "Time to extract features: " << (sift_header.timestamp_processed_ns - sift_header.timestamp_recieved_ns) / 1'000'000 << "ms\n";
+                std::cout << "Time to send to logger: " << (timestamp_ns - sift_header.timestamp_processed_ns) / 1'000'000 << "ms\n";
 
-                db.logData(data);
+                // db.logData(data);
             }
         }
     }
     catch (const zmq::error_t& e) {
-        if (keepRunning == false && e.num() == EINTR) {
+        if (!(ShutdownHandler::running() == false) && e.num() == EINTR) {
             // Interrupted by SIGINT — normal exit
         } else {
             std::cerr << "ZMQ error: " << e.what() << std::endl;

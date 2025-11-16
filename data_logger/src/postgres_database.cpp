@@ -154,9 +154,7 @@ bool PostgresDatabase::logData(const std::string& payload) {
     try {
         pqxx::work txn(*connection);
 
-        bool success = split_payload
-            ? logSplitPayload(txn, payload)
-            : logUnsplitPayload(txn, payload);
+        bool success = logSplitPayload(txn, payload);
 
         if (success) {
             txn.commit();
@@ -205,23 +203,5 @@ bool PostgresDatabase::logSplitPayload(pqxx::work& txn,
     std::cout << "Logged split payload [image_id=" << image_id
               << "] image='" << image << "', features='" << features << "'"
               << std::endl;
-    return true;
-}
-
-// -----------------------------------------------------------
-//  Helper: unsplit payload mode
-// -----------------------------------------------------------
-bool PostgresDatabase::logUnsplitPayload(pqxx::work& txn,
-                                         const std::string& payload) {
-    const std::string payloadTable =
-        config["tables"]["payloads"]["name"].as<std::string>();
-
-    std::ostringstream query;
-    query << "INSERT INTO " << txn.esc(payloadTable)
-          << " (payload_data) VALUES (" << txn.quote(payload) << ");";
-
-    txn.exec(query.str());
-    std::cout << "Logged unsplit payload to '" << payloadTable
-              << "' (" << payload.size() << " chars)" << std::endl;
     return true;
 }

@@ -6,7 +6,9 @@ INCLUDES := \
         -I/opt/homebrew/include \
         -I/opt/homebrew/opt/libpq/include \
         -I/opt/homebrew/opt/yaml-cpp/include \
-        -I/opt/homebrew/opt/zeromq/include
+        -I/opt/homebrew/opt/zeromq/include \
+        -I/opt/homebrew/include \
+	-I/opt/homebrew/include/opencv4
 
 CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
 
@@ -17,7 +19,15 @@ LDFLAGS := \
         -L/opt/homebrew/opt/libpq/lib \
         -L/opt/homebrew/opt/yaml-cpp/lib \
         -L/opt/homebrew/opt/zeromq/lib \
-        -lpqxx -lpq -lyaml-cpp -lzmq
+        -lpqxx \
+        -lpq \
+        -lyaml-cpp \
+        -lzmq \
+        -lopencv_core \
+        -lopencv_imgcodecs \
+        -lopencv_highgui \
+        -lopencv_imgproc \
+        -lopencv_features2d \
 
 SRC_DIR := src
 OBJ_DIR := ../build/data_logger
@@ -25,7 +35,8 @@ BIN_DIR := ../build/data_logger
 EXEC_NAME := data_logger
 TARGET := $(BIN_DIR)/$(EXEC_NAME)
 
-SRCS := $(SRC_DIR)/database.cpp \
+SRCS := $(SRC_DIR)/data_logger.cpp \
+        $(SRC_DIR)/database.cpp \
         $(SRC_DIR)/postgres_database.cpp \
         main.cpp
 OBJS := $(SRCS:%.cpp=$(OBJ_DIR)/%.o)

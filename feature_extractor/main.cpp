@@ -37,6 +37,9 @@ int main() {
     try {
         while (ShutdownHandler::running()) {
             
+            // declare SIFT header
+            SIFTHeader sift_header;
+            
             // recieve image, preserve messages for sending to data logger
             ImageHeader img_header;
             cv::Mat img;
@@ -45,16 +48,17 @@ int main() {
             if (!recv_image_as_mat(subscriber, header_msg, pixels_msg, img_header, img)){
                 continue;
             }
+            sift_header.timestamp_recieved_ns = get_timestamp_ns_utc();
 
             std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols << " h:" << img.rows << " c:" << img.channels() << std::endl;
 
             // process image
-            SIFTHeader sift_header;
             cv::Ptr<cv::SIFT> siftPtr = cv::SIFT::create();
             std::vector<cv::KeyPoint> keypoints;
             cv::Mat descriptors;
             siftPtr->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
-
+            sift_header.timestamp_processed_ns = get_timestamp_ns_utc();
+            
             std::cout << "Processed Image #" << img_header.frame_number << ", got " << keypoints.size() << " keypoints" << std::endl;
             
             std::vector<KeyPointPortable> keypoints_tosend = serialize_keypoints(keypoints);
@@ -66,7 +70,6 @@ int main() {
             sift_header.params.contrast_threshold = siftPtr->getContrastThreshold();
             sift_header.params.edge_threshold     = siftPtr->getEdgeThreshold();
             sift_header.params.sigma              = siftPtr->getSigma();    
-            sift_header.timestamp_ns              = get_timestamp_ns_utc();
             sift_header.frame_number              = img_header.frame_number;
             sift_header.keypoint_count            = keypoints.size();
             sift_header.descriptor_count          = keypoints.size();

@@ -96,9 +96,6 @@ int main(int argc, char* argv[]) {
 
             if(!ShutdownHandler::running()) break;
 
-            std::cout << "Loaded image #" << header.frame_number << " ("
-                    << header.width << "x" << header.height << ", of type " << header.pixel_format << " at time " << header.timestamp_ns << ")\n";
-            
             // publish the image header and pixels via ZeroMQ, using a multipart message.
             // using a multipart message minimizes buffer allocations and copies. Also allows streaming.
             // ---- Frame 0: header ----
@@ -106,6 +103,10 @@ int main(int argc, char* argv[]) {
             // ---- Frame 1: pixel bytes ----
             sender.send(zmq::buffer(pixels.data(), header.pixel_count),
                         zmq::send_flags::none);
+
+            std::cout << "Sent image #" << header.frame_number << " ("
+                    << header.width << "x" << header.height << ", of type " << header.pixel_format << " at time " << header.timestamp_ns << ")\n";
+            
         }
 
     }

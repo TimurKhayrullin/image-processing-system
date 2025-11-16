@@ -33,7 +33,7 @@ private:
 
     // --- internal helpers ---
     bool logSplitPayload(pqxx::work& txn, const std::string& payload);
-    bool logUnsplitPayload(pqxx::work& txn, const std::string& payload);
+    //bool logUnsplitPayload(pqxx::work& txn, const std::string& payload);
     bool shouldRecheckSize();
     bool isDatabaseTooLarge();
 };

@@ -32,7 +32,8 @@ struct SIFTHeader {
     SIFTParams params;
 
     uint64_t frame_number;
-    uint64_t timestamp_ns;
+    uint64_t timestamp_recieved_ns;
+    uint64_t timestamp_processed_ns;
 
     uint32_t keypoint_count;
     uint32_t descriptor_count;
