@@ -1,8 +1,6 @@
 # PostgreSQL configuration for data_logger
 
 data_handling:
-  split_payload: false           # true = split image & feature inserts, false = store combined payload
-  data_format: "string"         # informational
   max_db_size_mb: 1024
   t_size_check_period: 30        # seconds (e.g., __ minutes)
   insert_count_size_check: 10000   # check after every __ inserts
@@ -15,28 +13,37 @@ database:
   password: "mypass"
 
 tables:
-  images:
-    enabled: true
-    name: "images"
-    columns:
-      id: "SERIAL PRIMARY KEY"
-      timestamp: "TIMESTAMP DEFAULT NOW()"
-      image_data: "TEXT"
-      metadata: "TEXT"
-
-  features:
-    enabled: true
-    name: "features"
-    columns:
-      id: "SERIAL PRIMARY KEY"
-      image_id: "INT REFERENCES images(id) ON DELETE CASCADE"
-      feature_vector: "TEXT"
-      model_version: "TEXT"
-
   payloads:
     enabled: true
     name: "payloads"
     columns:
-      id: "SERIAL PRIMARY KEY"
-      timestamp: "TIMESTAMP DEFAULT NOW()"
-      payload_data: "TEXT"
+      # data_logger
+      id: "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY"
+      timestamp_insert_ns: "BIGINT"
+      # image
+      width: "INT"
+      height: "INT"
+      channels: "INT"
+      pixel_format: "INT"
+      frame_number: "BIGINT"
+      timestamp_captured_ns: "BIGINT"
+      image_size_bytes: "BIGINT"
+      image_data: "BYTEA"
+      # feature extraction
+      sift_param_n_features: "INT"
+      sift_param_n_octave_layers: "INT"
+      sift_param_contrast_threshold: "DOUBLE PRECISION"
+      sift_param_edge_threshold: "DOUBLE PRECISION"
+      sift_param_sigma: "DOUBLE PRECISION"
+      timestamp_extractor_received_ns: "BIGINT"
+      timestamp_extractor_processed_ns: "BIGINT"
+      sift_keypoint_count: "INT"
+      sift_descriptor_count: "INT"
+      sift_descriptor_dim: "INT"
+      sift_descriptor_type: "INT"
+      sift_keypoints_size_bytes: "BIGINT"
+      sift_descriptors_size_bytes: "BIGINT"
+      sift_keypoints_data: "BYTEA"
+      sift_descriptors_data: "BYTEA"
+
+

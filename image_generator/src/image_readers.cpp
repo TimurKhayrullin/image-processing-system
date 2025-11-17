@@ -33,7 +33,11 @@ bool OpenCVImageReader::load(const std::string &filepath,
 // load image metadata directly into an ImageHeader for sending
 bool OpenCVImageReader::load(const std::string &filepath, std::vector<uint8_t> &outPixels, ImageHeader &header) const 
 {
-    return load(filepath, outPixels, header.width, header.height, header.channels, header.pixel_format);
+    auto res = load(filepath, outPixels, header.width, header.height, header.channels, header.pixel_format);
+
+    header.image_size_bytes = outPixels.size();
+
+    return res;
 }
 
 // handler factory implementation

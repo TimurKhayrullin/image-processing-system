@@ -36,16 +36,16 @@ bool recv_image(zmq::socket_t& socket,
         return false;
     }
 
-    if (pixel_msg.size() != out_header.pixel_count) {
+    if (pixel_msg.size() != out_header.image_size_bytes) {
         std::cerr << "[ERROR] Pixel count mismatch: got "
                   << pixel_msg.size()
-                  << ", expected " << out_header.pixel_count << "\n";
+                  << ", expected " << out_header.image_size_bytes << "\n";
         return false;
     }
 
     // Copy pixel data
-    out_pixels.resize(out_header.pixel_count);
-    std::memcpy(out_pixels.data(), pixel_msg.data(), out_header.pixel_count);
+    out_pixels.resize(out_header.image_size_bytes);
+    std::memcpy(out_pixels.data(), pixel_msg.data(), out_header.image_size_bytes);
 
     return true;
 }
@@ -69,7 +69,7 @@ bool recv_image_as_mat( zmq::socket_t& socket,
     if (!socket.recv(pixels_msg_out, zmq::recv_flags::none))
         return false;
 
-    if (pixels_msg_out.size() != out_header.pixel_count)
+    if (pixels_msg_out.size() != out_header.image_size_bytes)
         return false;
 
     // Select cv::Mat type based on pixel format
@@ -104,8 +104,8 @@ bool send_image_plus_features(zmq::socket_t& socket, zmq::message_t &img_header_
     // send SIFT header
     socket.send(zmq::buffer(&sift_header, sizeof(sift_header)), zmq::send_flags::sndmore);
     // send SIFT features
-    socket.send(zmq::buffer(keypoints_tosend.data(), keypoints_tosend.size() * sizeof(KeyPointPortable)), zmq::send_flags::sndmore); // keypoints array
-    socket.send(zmq::buffer(desc_mat_data.data(), desc_mat_data.size()), zmq::send_flags::none); // descriptors matrix data
+    socket.send(zmq::buffer(keypoints_tosend.data(), sift_header.keypoints_size_bytes), zmq::send_flags::sndmore); // keypoints array
+    socket.send(zmq::buffer(desc_mat_data.data(), sift_header.descriptors_size_bytes), zmq::send_flags::none); // descriptors matrix data
 
     return true;
 }

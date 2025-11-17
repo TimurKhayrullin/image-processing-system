@@ -47,9 +47,7 @@ int main(int argc, char* argv[]) {
         std::cout << "directory is empty.\n";
         return 0;
     }
-
-
-
+    
     // Setup image handler 
     ImageReaderFactory factory;
 
@@ -101,7 +99,7 @@ int main(int argc, char* argv[]) {
             // ---- Frame 0: header ----
             sender.send(zmq::buffer(&header, sizeof(header)), zmq::send_flags::sndmore);
             // ---- Frame 1: pixel bytes ----
-            sender.send(zmq::buffer(pixels.data(), header.pixel_count),
+            sender.send(zmq::buffer(pixels.data(), header.image_size_bytes),
                         zmq::send_flags::none);
 
             std::cout << "Sent image #" << header.frame_number << " ("

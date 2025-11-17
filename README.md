@@ -52,7 +52,5 @@ psql -h 127.0.0.1 -U postgres -p 5432 -W
 ## postgres cli for prompting
 psql -U postgres -d telemetry
 
-## drop the entire database and recreate it 
-psql -U postgres -d postgres -c "DROP DATABASE telemetry; CREATE DATABASE telemetry;"
-
-TODO: Implement ImageMessage into image_generator/main.cpp
+## drop the entire database
+psql -U postgres -d telemetry -c "DROP TABLE payloads;"

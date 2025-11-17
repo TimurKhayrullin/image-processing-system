@@ -1,3 +1,4 @@
+#include "data_logger.hpp"
 #include "postgres_database.hpp"
 
 PostgresDatabase::PostgresDatabase(const std::string& config_path)
@@ -25,6 +26,8 @@ PostgresDatabase::PostgresDatabase(const std::string& config_path)
               << " inserts\n";
 
     if (connect()) setupSchema();
+
+    prepareStatements();
 
     last_size_check_time = std::chrono::steady_clock::now();
 }
@@ -86,6 +89,8 @@ bool PostgresDatabase::setupSchema() {
             }
             query << ");";
 
+            std::cout << query.str() << std::endl;
+
             txn.exec(query.str());
         }
 
@@ -97,6 +102,32 @@ bool PostgresDatabase::setupSchema() {
         return false;
     }
 }
+
+// prepare a sql statement for inserting data into db
+void PostgresDatabase::prepareStatements() {
+    connection->prepare(
+        "insert_payload",
+        "INSERT INTO payloads ("
+            "timestamp_insert_ns, width, height, channels, pixel_format, frame_number,"
+            "timestamp_captured_ns, image_size_bytes, image_data,"
+            "sift_param_n_features, sift_param_n_octave_layers,"
+            "sift_param_contrast_threshold, sift_param_edge_threshold, sift_param_sigma,"
+            "timestamp_extractor_received_ns, timestamp_extractor_processed_ns,"
+            "sift_keypoint_count, sift_descriptor_count, sift_descriptor_dim, sift_descriptor_type,"
+            "sift_keypoints_size_bytes, sift_descriptors_size_bytes,"
+            "sift_keypoints_data, sift_descriptors_data"
+        ") VALUES ("
+            "$1,$2,$3,$4,$5,"
+            "$6,$7,$8,"
+            "$9,$10,$11,$12,$13,"
+            "$14,$15,"
+            "$16,$17,$18,$19,"
+            "$20,$21,"
+            "$22,$23,$24"
+        ")"
+    );
+}
+
 
 // -----------------------------------------------------------
 //  Database size management
@@ -136,7 +167,7 @@ bool PostgresDatabase::isDatabaseTooLarge() {
 //  Logging entry point
 // -----------------------------------------------------------
 
-bool PostgresDatabase::logData(const std::string& payload) {
+bool PostgresDatabase::logData(const Payload& payload, uint64_t timestamp_insert_ns) {
     if (!isConnected || !connection || !connection->is_open()) {
         std::cerr << "Database not connected, cannot log data." << std::endl;
         return false;
@@ -152,9 +183,10 @@ bool PostgresDatabase::logData(const std::string& payload) {
     }
 
     try {
+
         pqxx::work txn(*connection);
 
-        bool success = logSplitPayload(txn, payload);
+        bool success = performInsert(txn, payload, timestamp_insert_ns);
 
         if (success) {
             txn.commit();
@@ -169,39 +201,55 @@ bool PostgresDatabase::logData(const std::string& payload) {
     }
 }
 
+
+
 // -----------------------------------------------------------
-//  Helper: split payload mode
+//  Helper: actually do the insert operation
 // -----------------------------------------------------------
-bool PostgresDatabase::logSplitPayload(pqxx::work& txn,
-                                       const std::string& payload) {
-    // Expect payload formatted as:  "<image>|<features>|<optional_model>"
-    std::istringstream ss(payload);
-    std::string image, features, model;
-    std::getline(ss, image, '|');
-    std::getline(ss, features, '|');
-    std::getline(ss, model, '|'); // may be empty
+bool PostgresDatabase::performInsert(pqxx::work& txn, const Payload& payload, uint64_t timestamp_insert_ns)
+{
 
-    if (image.empty() || features.empty()) {
-        std::cerr << "Invalid split payload: must contain at least image and features." << std::endl;
-        return false;
-    }
+    std::basic_string<std::byte> img_bytes(
+        reinterpret_cast<const std::byte*>(payload.pixels.data()),
+        payload.pixels.size());
 
-    std::ostringstream imgQuery;
-    imgQuery << "INSERT INTO images (image_data, metadata) VALUES ("
-             << txn.quote(image) << ", NULL) RETURNING id;";
-    pqxx::result imgRes = txn.exec(imgQuery.str());
-    int image_id = imgRes[0][0].as<int>();
+    std::basic_string<std::byte> kp_bytes(
+        reinterpret_cast<const std::byte*>(payload.keypoints.data()),
+        payload.keypoints.size() * sizeof(KeyPointPortable));
 
-    std::ostringstream featQuery;
-    featQuery << "INSERT INTO features (image_id, feature_vector, model_version) VALUES ("
-              << image_id << ", "
-              << txn.quote(features) << ", "
-              << (model.empty() ? "NULL" : txn.quote(model))
-              << ");";
-    txn.exec(featQuery.str());
+    std::basic_string<std::byte> desc_bytes(
+        reinterpret_cast<const std::byte*>(payload.desc_mat.data()),
+        payload.desc_mat.size());
+    
+    // this is marked depracted, but this version of libpqxx doesn't have the newer API for prepared statements
+    // and newer version is c++20 only.
+    txn.exec_prepared(
+        "insert_payload",
+        timestamp_insert_ns,
+        payload.image_header.width,
+        payload.image_header.height,
+        payload.image_header.channels,
+        payload.image_header.pixel_format,
+        payload.image_header.frame_number,
+        payload.image_header.timestamp_ns,
+        payload.image_header.image_size_bytes,
+        img_bytes,
+        payload.sift_header.params.n_features,
+        payload.sift_header.params.n_octave_layers,
+        payload.sift_header.params.contrast_threshold,
+        payload.sift_header.params.edge_threshold,
+        payload.sift_header.params.sigma,
+        payload.sift_header.timestamp_received_ns,
+        payload.sift_header.timestamp_processed_ns,
+        payload.sift_header.keypoint_count,
+        payload.sift_header.descriptor_count,
+        payload.sift_header.descriptor_dim,
+        payload.sift_header.descriptor_type,
+        payload.sift_header.keypoints_size_bytes,
+        payload.sift_header.descriptors_size_bytes,
+        kp_bytes,
+        desc_bytes
+    );
 
-    std::cout << "Logged split payload [image_id=" << image_id
-              << "] image='" << image << "', features='" << features << "'"
-              << std::endl;
     return true;
 }

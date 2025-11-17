@@ -39,31 +39,20 @@ int main() {
         while (ShutdownHandler::running()) {
             zmq::message_t msg;
 
-            ImageHeader img_header;
-            std::vector<uint8_t> pixels;
-            SIFTHeader sift_header;
-            std::vector<KeyPointPortable> keypoints;
-            std::vector<uint8_t> desc_mat;
+            Payload payload;
 
-            bool received = recv_image_plus_features(
-                                subscriber,
-                                img_header,
-                                pixels,
-                                sift_header,
-                                keypoints,
-                                desc_mat
-                            );
+            bool received = recv_payload(subscriber, payload);
 
             if (received) {
 
                 uint64_t timestamp_ns = get_timestamp_ns_utc();
 
-                std::cout << "Received: image+features#" << img_header.frame_number << "\n";
-                std::cout << "Time to send to extractor: " << (sift_header.timestamp_recieved_ns - img_header.timestamp_ns) / 1'000'000 << "ms\n";
-                std::cout << "Time to extract features: " << (sift_header.timestamp_processed_ns - sift_header.timestamp_recieved_ns) / 1'000'000 << "ms\n";
-                std::cout << "Time to send to logger: " << (timestamp_ns - sift_header.timestamp_processed_ns) / 1'000'000 << "ms\n";
+                std::cout << "Received: image+features#" << payload.image_header.frame_number << "\n";
+                std::cout << "Time to send to extractor: " << (payload.sift_header.timestamp_received_ns - payload.image_header.timestamp_ns) / 1'000'000 << "ms\n";
+                std::cout << "Time to extract features: " << (payload.sift_header.timestamp_processed_ns - payload.sift_header.timestamp_received_ns) / 1'000'000 << "ms\n";
+                std::cout << "Time to send to logger: " << (timestamp_ns - payload.sift_header.timestamp_processed_ns) / 1'000'000 << "ms\n";
 
-                // db.logData(data);
+                db.logData(payload, timestamp_ns);
             }
         }
     }

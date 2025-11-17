@@ -3,13 +3,9 @@
 #include "feature_serialization.hpp"
 #include <zmq.hpp>
 
-bool recv_image_plus_features(
+bool recv_payload(
     zmq::socket_t& socket,
-    ImageHeader& img_header,
-    std::vector<uint8_t>& pixels,
-    SIFTHeader& sift_header_out,
-    std::vector<KeyPointPortable>& keypoints,
-    std::vector<uint8_t>& desc_mat
+    Payload &payload
 )
 {
     // -------------------------------------------------------
@@ -23,7 +19,7 @@ bool recv_image_plus_features(
         throw std::runtime_error("Invalid image header size");
 
     // decode image header
-    std::memcpy(&img_header, img_header_msg.data(), sizeof(ImageHeader));
+    std::memcpy(&payload.image_header, img_header_msg.data(), sizeof(ImageHeader));
 
 
     // -------------------------------------------------------
@@ -33,9 +29,9 @@ bool recv_image_plus_features(
     if (!socket.recv(pixels_msg, zmq::recv_flags::none))
         return false;
 
-    // Caller knows pixel_count from ImageHeader.
-    pixels.resize(pixels_msg.size());
-    std::memcpy(pixels.data(),
+    // Caller knows image_size_bytes from ImageHeader.
+    payload.pixels.resize(pixels_msg.size());
+    std::memcpy(payload.pixels.data(),
                 pixels_msg.data(),
                 pixels_msg.size());
 
@@ -49,7 +45,7 @@ bool recv_image_plus_features(
     if (sift_header_msg.size() != sizeof(SIFTHeader))
         throw std::runtime_error("Invalid SIFTHeader size");
 
-    std::memcpy(&sift_header_out, sift_header_msg.data(), sizeof(SIFTHeader));
+    std::memcpy(&payload.sift_header, sift_header_msg.data(), sizeof(SIFTHeader));
 
 
     // -------------------------------------------------------
@@ -62,11 +58,11 @@ bool recv_image_plus_features(
     const size_t kpt_count =
         keypoints_msg.size() / sizeof(KeyPointPortable);
 
-    if (kpt_count != sift_header_out.keypoint_count)
+    if (kpt_count != payload.sift_header.keypoint_count)
         throw std::runtime_error("Keypoint count mismatch");
 
-    keypoints.resize(kpt_count);
-    std::memcpy(keypoints.data(),
+    payload.keypoints.resize(kpt_count);
+    std::memcpy(payload.keypoints.data(),
                 keypoints_msg.data(),
                 keypoints_msg.size());
 
@@ -78,8 +74,8 @@ bool recv_image_plus_features(
     if (!socket.recv(desc_msg, zmq::recv_flags::none))
         return false;
 
-    desc_mat.resize(desc_msg.size());
-    std::memcpy(desc_mat.data(),
+    payload.desc_mat.resize(desc_msg.size());
+    std::memcpy(payload.desc_mat.data(),
                 desc_msg.data(),
                 desc_msg.size());
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "database.hpp"
+#include "data_logger.hpp"
 #include <vector>
 #include <pqxx/pqxx>
 #include <chrono>
@@ -10,7 +11,7 @@ public:
     ~PostgresDatabase() override;
 
     // Main public operation
-    bool logData(const std::string& payload) override;
+    bool logData(const Payload& payload, uint64_t timestamp_insert_ns) override;
 
 protected:
     // Internal virtual overrides
@@ -30,9 +31,10 @@ private:
     size_t insert_counter = 0;
     bool db_too_large_cached = false;
     std::chrono::steady_clock::time_point last_size_check_time;
+    void prepareStatements();
 
     // --- internal helpers ---
-    bool logSplitPayload(pqxx::work& txn, const std::string& payload);
+    bool performInsert(pqxx::work& txn, const Payload& payload, uint64_t timestamp_insert_ns);
     //bool logUnsplitPayload(pqxx::work& txn, const std::string& payload);
     bool shouldRecheckSize();
     bool isDatabaseTooLarge();

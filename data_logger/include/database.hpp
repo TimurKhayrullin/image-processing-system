@@ -1,4 +1,5 @@
 #pragma once
+#include "data_logger.hpp"
 #include <string>
 #include <yaml-cpp/yaml.h>
 #include <iostream>
@@ -14,7 +15,7 @@ public:
     Database(const std::string& name);
 
     // Data logging API
-    virtual bool logData(const std::string& payload) = 0;
+    virtual bool logData(const Payload& payload, uint64_t timestamp_insert_ns) = 0;
 
     // Utility method for diagnostics or testing
     virtual void printStatus() const;

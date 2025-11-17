@@ -48,7 +48,7 @@ int main() {
             if (!recv_image_as_mat(subscriber, header_msg, pixels_msg, img_header, img)){
                 continue;
             }
-            sift_header.timestamp_recieved_ns = get_timestamp_ns_utc();
+            sift_header.timestamp_received_ns = get_timestamp_ns_utc();
 
             std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols << " h:" << img.rows << " c:" << img.channels() << std::endl;
 
@@ -75,6 +75,7 @@ int main() {
             sift_header.descriptor_count          = keypoints.size();
             sift_header.descriptor_dim            = siftPtr->descriptorSize();
             sift_header.descriptor_type           = descriptors.type();
+            sift_header.keypoints_size_bytes      = keypoints_tosend.size() * sizeof(KeyPointPortable);
             sift_header.descriptors_size_bytes    = desc_mat_data.size();
 
             // send original image + feature vector

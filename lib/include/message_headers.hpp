@@ -14,7 +14,7 @@ struct ImageHeader {
     uint32_t pixel_format;      // e.g. RGB8, GRAY8
     uint64_t frame_number;
     uint64_t timestamp_ns;
-    uint64_t pixel_count;       // number of bytes following the header
+    uint64_t image_size_bytes;
 };
 
 // struct for specifying which parameters were used when running SIFT keypoint detection + feature extraction
@@ -32,7 +32,7 @@ struct SIFTHeader {
     SIFTParams params;
 
     uint64_t frame_number;
-    uint64_t timestamp_recieved_ns;
+    uint64_t timestamp_received_ns;
     uint64_t timestamp_processed_ns;
 
     uint32_t keypoint_count;
