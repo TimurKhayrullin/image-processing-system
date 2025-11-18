@@ -50,7 +50,13 @@ int main() {
             }
             sift_header.timestamp_received_ns = get_timestamp_ns_utc();
 
-            std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols << " h:" << img.rows << " c:" << img.channels() << std::endl;
+            std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols
+                     << " h:" << img.rows << " c:" << img.channels() << " type:" << img.type() << std::endl;
+
+            // correct bit depth of image for processing
+            if(img.type() == 18){
+                img.convertTo(img, CV_8U, 1.0 / 256.0);
+            }
 
             // process image
             cv::Ptr<cv::SIFT> siftPtr = cv::SIFT::create();

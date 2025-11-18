@@ -92,6 +92,8 @@ int main(int argc, char* argv[]) {
 
             header.frame_number = frame_count++;
 
+            //if(frame_count >=100) return 0; // debug
+
             if(!ShutdownHandler::running()) break;
 
             // publish the image header and pixels via ZeroMQ, using a multipart message.
@@ -103,7 +105,7 @@ int main(int argc, char* argv[]) {
                         zmq::send_flags::none);
 
             std::cout << "Sent image #" << header.frame_number << " ("
-                    << header.width << "x" << header.height << ", of type " << header.pixel_format << " at time " << header.timestamp_ns << ")\n";
+                    << header.width << "x" << header.height << ", of type " << header.pixel_format << ", with size " << header.image_size_bytes << " bytes)\n";
             
         }
 

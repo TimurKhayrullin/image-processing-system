@@ -26,7 +26,7 @@ bool OpenCVImageReader::load(const std::string &filepath,
     c = img.channels();
     pixel_format = img.type();
 
-    outPixels.assign(img.data, img.data + img.total() * c);
+    outPixels.assign(img.data, img.data + (img.total() * img.elemSize()));
     return true;
 }
 

@@ -72,23 +72,51 @@ bool recv_image_as_mat( zmq::socket_t& socket,
     if (pixels_msg_out.size() != out_header.image_size_bytes)
         return false;
 
-    // Select cv::Mat type based on pixel format
-    int cv_type = 0;
-    switch (out_header.pixel_format) {
-        case 0: cv_type = CV_8UC1; break; // GRAY8
-        case 1: cv_type = CV_8UC3; break; // RGB8
+    int cv_type = out_header.pixel_format; // 16 or 18
+
+    int channels = CV_MAT_CN(cv_type);
+    int depth    = CV_MAT_DEPTH(cv_type);
+
+    int bytes_per_channel = 0;
+    switch (depth) {
+        case CV_8U:  bytes_per_channel = 1; break;
+        case CV_16U: bytes_per_channel = 2; break;
+        // add others if needed
         default:
-            throw std::runtime_error("Unsupported pixel_format");
+            std::cerr << "Unsupported depth: " << depth << "\n";
+            std::exit(1);
+    }
+
+    size_t expected_bytes = static_cast<size_t>(out_header.width) *
+                            static_cast<size_t>(out_header.height) *
+                            static_cast<size_t>(channels) *
+                            static_cast<size_t>(bytes_per_channel);
+
+    if (pixels_msg_out.size() < expected_bytes) {
+        std::cerr << "[ERROR] Pixel buffer too small: have "
+                << pixels_msg_out.size() << " bytes, expected at least "
+                << expected_bytes << " (w=" << out_header.width
+                << ", h=" << out_header.height
+                << ", channels=" << channels
+                << ", bpc=" << bytes_per_channel << ")\n";
+        std::exit(1);
     }
 
     // Wrap *without copying* using the ZMQ pixel buffer
+
+    //std::cout << "received image of size " << out_header.image_size_bytes << " bytes\n";
+
     cv::Mat wrapped(out_header.height,
                     out_header.width,
-                    cv_type,
+                    out_header.pixel_format,
                     pixels_msg_out.data());
+    
+    //std::cout << "mat created\n";
 
     // Clone so the cv::Mat owns its own memory
     out_img = wrapped.clone();
+
+    //std::cout << "mat cloned\n";
 
     return true;
 }

@@ -52,5 +52,17 @@ psql -h 127.0.0.1 -U postgres -p 5432 -W
 ## postgres cli for prompting
 psql -U postgres -d telemetry
 
-## drop the entire database
-psql -U postgres -d telemetry -c "DROP TABLE payloads;"
+## clear the data in the database but keep defined tables and columns
+psql -U postgres -d telemetry -c "TRUNCATE TABLE payloads RESTART IDENTITY;"
+
+
+## some links to datasets
+# small 
+https://li-chongyi.github.io/proj_benchmark.html 
+
+# medium
+https://github.com/dlut-dimt/Realworld-Underwater-Image-Enhancement-RUIE-Benchmark/blob/master/UIQS.rar 
+
+# large
+https://zenodo.org/records/5744037 
+

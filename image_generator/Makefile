@@ -13,7 +13,7 @@ INCLUDES := \
 # ------------------------------------------------------------
 # Compiler and linker flags
 # ------------------------------------------------------------
-CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
+CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP -g -fno-omit-frame-pointer -O0
 
 # Link ZeroMQ + OpenCV
 LDFLAGS := \
@@ -25,7 +25,7 @@ LDFLAGS := \
     -lopencv_imgcodecs \
     -lopencv_highgui \
     -lopencv_imgproc \
-    -lopencv_features2d
+    -lopencv_features2d \
 
 # ------------------------------------------------------------
 # Directory setup
