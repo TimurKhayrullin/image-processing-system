@@ -112,18 +112,21 @@ void PostgresDatabase::prepareStatements() {
             "timestamp_captured_ns, image_size_bytes, image_data,"
             "sift_param_n_features, sift_param_n_octave_layers,"
             "sift_param_contrast_threshold, sift_param_edge_threshold, sift_param_sigma,"
+            "sift_param_descriptor_type, sift_param_enable_percise_upscale,"
             "timestamp_extractor_received_ns, timestamp_extractor_processed_ns,"
-            "sift_keypoint_count, sift_descriptor_count, sift_descriptor_dim, sift_descriptor_type,"
+            "sift_keypoint_count, sift_descriptor_count, sift_descriptor_dim,"
             "sift_keypoints_size_bytes, sift_descriptors_size_bytes,"
             "sift_keypoints_data, sift_descriptors_data"
         ") VALUES ("
-            "$1,$2,$3,$4,$5,"
-            "$6,$7,$8,"
-            "$9,$10,$11,$12,$13,"
-            "$14,$15,"
-            "$16,$17,$18,$19,"
-            "$20,$21,"
-            "$22,$23,$24"
+            "$1, $2, $3, $4, $5, $6,"
+            "$7, $8, $9,"
+            "$10, $11,"
+            "$12, $13, $14,"
+            "$15, $16,"
+            "$17, $18,"
+            "$19, $20, $21,"
+            "$22, $23,"
+            "$24, $25"
         ")"
     );
 }
@@ -239,12 +242,13 @@ bool PostgresDatabase::performInsert(pqxx::work& txn, const Payload& payload, ui
         payload.sift_header.params.contrast_threshold,
         payload.sift_header.params.edge_threshold,
         payload.sift_header.params.sigma,
+        payload.sift_header.params.descriptor_type,
+        payload.sift_header.params.enable_percise_upscale,
         payload.sift_header.timestamp_received_ns,
         payload.sift_header.timestamp_processed_ns,
         payload.sift_header.keypoint_count,
         payload.sift_header.descriptor_count,
         payload.sift_header.descriptor_dim,
-        payload.sift_header.descriptor_type,
         payload.sift_header.keypoints_size_bytes,
         payload.sift_header.descriptors_size_bytes,
         kp_bytes,

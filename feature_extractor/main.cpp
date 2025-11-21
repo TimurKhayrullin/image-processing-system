@@ -2,7 +2,8 @@
 #include "shutdown_handler.hpp"
 #include "message_headers.hpp"
 #include "feature_serialization.hpp"
-#include "feature_extractor.hpp"
+#include "message_handling.hpp"
+#include "extractor.hpp"
 #include <opencv2/features2d.hpp>
 #include <iostream>
 #include <string>
@@ -16,7 +17,10 @@ int main() {
     print_banner("Feature Extractor Started");
 
     // <--- install signal handlers for shutdown
-    ShutdownHandler::init();     
+    ShutdownHandler::init(); 
+    
+    // Create Processor object
+    SIFTExtractor extractor = SIFTExtractor("configs/feature_extractor/SIFT_params.yml");
 
     // Create a ZeroMQ context and subscriber socket
     zmq::context_t ctx{1};
@@ -34,21 +38,25 @@ int main() {
 
     std::cout << "Listening for messages on ipc:///tmp/camera_pub.sock ..." << std::endl;
 
+    // start receiving images from image generator
     try {
         while (ShutdownHandler::running()) {
             
-            // declare SIFT header
-            SIFTHeader sift_header;
-            
-            // recieve image, preserve messages for sending to data logger
+            // prepare image + features payload
+            FeaturesHeader features_header;
             ImageHeader img_header;
             cv::Mat img;
             zmq::message_t header_msg;
             zmq::message_t pixels_msg;
+
+            // recieve image, preserve messages for sending to data logger
             if (!recv_image_as_mat(subscriber, header_msg, pixels_msg, img_header, img)){
                 continue;
             }
-            sift_header.timestamp_received_ns = get_timestamp_ns_utc();
+
+            // mark processing payload with timestamp, and set frame number 
+            features_header.timestamp_received_ns = get_timestamp_ns_utc();
+            features_header.frame_number = img_header.frame_number;
 
             std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols
                      << " h:" << img.rows << " c:" << img.channels() << " type:" << img.type() << std::endl;
@@ -59,33 +67,25 @@ int main() {
             }
 
             // process image
-            cv::Ptr<cv::SIFT> siftPtr = cv::SIFT::create();
-            std::vector<cv::KeyPoint> keypoints;
-            cv::Mat descriptors;
-            siftPtr->detectAndCompute(img, cv::noArray(), keypoints, descriptors);
-            sift_header.timestamp_processed_ns = get_timestamp_ns_utc();
+            extractor.extract_features(img);
             
-            std::cout << "Processed Image #" << img_header.frame_number << ", got " << keypoints.size() << " keypoints" << std::endl;
+            std::cout << "Processed Image #" << img_header.frame_number << std::endl;
             
-            std::vector<KeyPointPortable> keypoints_tosend = serialize_keypoints(keypoints);
-            std::vector<uint8_t> desc_mat_data = serialize_descriptors(descriptors);
+            // serialize keypoints and descriptors to contiguous byte array for sending
+            extractor.serialize_features();
 
-            // initialize header for sift feature message
-            sift_header.params.n_features         = 0;
-            sift_header.params.n_octave_layers    = siftPtr->getNOctaveLayers();
-            sift_header.params.contrast_threshold = siftPtr->getContrastThreshold();
-            sift_header.params.edge_threshold     = siftPtr->getEdgeThreshold();
-            sift_header.params.sigma              = siftPtr->getSigma();    
-            sift_header.frame_number              = img_header.frame_number;
-            sift_header.keypoint_count            = keypoints.size();
-            sift_header.descriptor_count          = keypoints.size();
-            sift_header.descriptor_dim            = siftPtr->descriptorSize();
-            sift_header.descriptor_type           = descriptors.type();
-            sift_header.keypoints_size_bytes      = keypoints_tosend.size() * sizeof(KeyPointPortable);
-            sift_header.descriptors_size_bytes    = desc_mat_data.size();
+            // set header values for features message
+            extractor.set_header(features_header);
 
             // send original image + feature vector
-            send_image_plus_features(publisher, header_msg, pixels_msg, sift_header, keypoints_tosend, desc_mat_data);
+            send_image_plus_features(
+                publisher, 
+                header_msg, 
+                pixels_msg, 
+                features_header, 
+                extractor.serialized_keypoints, 
+                extractor.serialized_descriptors
+            );
         }
     }
     catch (const zmq::error_t& e) {

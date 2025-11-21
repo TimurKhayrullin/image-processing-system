@@ -42,10 +42,10 @@ bool recv_payload(
     if (!socket.recv(sift_header_msg, zmq::recv_flags::none))
         return false;
 
-    if (sift_header_msg.size() != sizeof(SIFTHeader))
+    if (sift_header_msg.size() != sizeof(FeaturesHeader))
         throw std::runtime_error("Invalid SIFTHeader size");
 
-    std::memcpy(&payload.sift_header, sift_header_msg.data(), sizeof(SIFTHeader));
+    std::memcpy(&payload.sift_header, sift_header_msg.data(), sizeof(FeaturesHeader));
 
 
     // -------------------------------------------------------

@@ -29,26 +29,27 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-     print_banner("Image Generator Started");
+    print_banner("Image Generator Started");
     
     // <--- install signal handlers for shutdown
     ShutdownHandler::init();     
 
     fs::path path(argv[1]);
 
+    // check that directory exists
     if (!fs::exists(path) || !fs::is_directory(path)) {
         std::cerr << "Error: path does not exist or is not a directory.\n";
         return 1;
     }
 
+    // check that directory isn't empty
     std::filesystem::directory_iterator dir_iterator(path);
-
     if (dir_iterator == fs::end(dir_iterator)) {
         std::cout << "directory is empty.\n";
         return 0;
     }
     
-    // Setup image handler 
+    // Setup image reader 
     ImageReaderFactory factory;
 
     // ZeroMQ for easy ICP customization, abstraction.
@@ -71,14 +72,15 @@ int main(int argc, char* argv[]) {
             if (!entry.is_regular_file())
                 continue;
 
+            // get reader for given file
             std::string filepath = entry.path().string();
             const ImageReader* reader = factory.get_reader(filepath);
-
             if (!reader) {
                 std::cerr << "[WARN] No reader for " << filepath << "\n";
                 continue;
             }
-
+            
+            // setup message payload
             ImageHeader header;
             std::vector<uint8_t> pixels;
 
@@ -88,11 +90,9 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
+            // mark payload with timestamp and frame number
             header.timestamp_ns = get_timestamp_ns_utc();
-
             header.frame_number = frame_count++;
-
-            //if(frame_count >=100) return 0; // debug
 
             if(!ShutdownHandler::running()) break;
 

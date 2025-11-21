@@ -19,4 +19,6 @@ bool recv_image_as_mat( zmq::socket_t& socket,
                         cv::Mat& out_img );
 
 bool send_image_plus_features(zmq::socket_t& socket, zmq::message_t &img_header_msg, zmq::message_t &pixels_msg,
-                            SIFTHeader &sift_header, std::vector<KeyPointPortable> &keypoints_tosend, std::vector<uint8_t> &desc_mat_data);
+                            FeaturesHeader &sift_header, std::vector<KeyPointPortable> &keypoints_tosend, std::vector<uint8_t> &desc_mat_data);
+
+

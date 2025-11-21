@@ -2,7 +2,6 @@
 #pragma once
 #include <vector>
 
-
 // we use pragma pack(push, 1) to line up the struct members contiguously in memory, without padding.
 // This allows us to send the struct using a binary protocol (fast)
 #pragma pack(push, 1)
@@ -24,11 +23,14 @@ struct SIFTParams {
     double   contrast_threshold;
     double   edge_threshold;
     double   sigma;
-};
+    uint32_t descriptor_type;
+    bool     enable_percise_upscale;
+}; 
 
 // struct for packaging keypoint + feature messages to send them over IPC
-struct SIFTHeader {
-    // Optional configuration block
+// use class factory, optoinally.
+struct FeaturesHeader {
+    
     SIFTParams params;
 
     uint64_t frame_number;
@@ -38,10 +40,10 @@ struct SIFTHeader {
     uint32_t keypoint_count;
     uint32_t descriptor_count;
     uint32_t descriptor_dim;
-    uint32_t descriptor_type;
 
     uint64_t keypoints_size_bytes;
     uint64_t descriptors_size_bytes;
+
 };
 
 #pragma pack(pop)

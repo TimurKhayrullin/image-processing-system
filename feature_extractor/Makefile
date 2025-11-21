@@ -4,6 +4,7 @@ INCLUDES := \
     -I../lib/include \
     -Iinclude \
 	-I/opt/homebrew/include \
+	-I/opt/homebrew/opt/yaml-cpp/include \
 	-I/opt/homebrew/include/opencv4
 
 CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
@@ -12,6 +13,8 @@ LDFLAGS := \
 	-L../build/lib \
     -lshared \
 	-L/opt/homebrew/lib \
+	-L/opt/homebrew/opt/yaml-cpp/lib \
+	-lyaml-cpp \
 	-lzmq \
 	-lopencv_core \
     -lopencv_imgcodecs \
@@ -25,7 +28,11 @@ BIN_DIR := ../build/feature_extractor
 EXEC_NAME := feature_extractor
 TARGET := $(BIN_DIR)/$(EXEC_NAME)
 
-SRCS := $(SRC_DIR)/$(EXEC_NAME).cpp main.cpp
+SRCS := \
+	$(SRC_DIR)/message_handling.cpp \
+	$(SRC_DIR)/extractor.cpp \
+	main.cpp
+
 OBJS := $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 

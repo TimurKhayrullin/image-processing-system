@@ -7,7 +7,7 @@
 struct Payload{
     ImageHeader image_header;
     std::vector<uint8_t> pixels;
-    SIFTHeader sift_header;
+    FeaturesHeader sift_header;
     std::vector<KeyPointPortable> keypoints;
     std::vector<uint8_t> desc_mat;
 };
