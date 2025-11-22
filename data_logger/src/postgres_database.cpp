@@ -1,5 +1,6 @@
 #include "data_logger.hpp"
 #include "postgres_database.hpp"
+#include <fstream>
 
 PostgresDatabase::PostgresDatabase(const std::string& config_path)
     : Database(config_path) {
@@ -25,7 +26,7 @@ PostgresDatabase::PostgresDatabase(const std::string& config_path)
               << " s | Check every " << insert_count_size_check
               << " inserts\n";
 
-    if (connect()) setupSchema();
+    if (connect()) setup_schema();
 
     prepareStatements();
 
@@ -65,34 +66,51 @@ void PostgresDatabase::configureParameters() {
     connectionInfo = conninfo.str();
 }
 
-bool PostgresDatabase::setupSchema() {
+bool PostgresDatabase::setup_schema() {
     if (!isConnected || !connection || !connection->is_open()) return false;
 
     try {
         pqxx::work txn(*connection);
-        const auto& tables = config["tables"];
 
-        for (auto it = tables.begin(); it != tables.end(); ++it) {
-            if (!it->second["enabled"].as<bool>()) continue;
+        const auto& schema_path = config["schema_path"].as<std::string>();
 
-            std::ostringstream query;
-            query << "CREATE TABLE IF NOT EXISTS "
-                  << it->second["name"].as<std::string>() << " (";
+        // read schema file into string
+        std::ifstream schema_file(schema_path);
 
-            const auto& cols = it->second["columns"];
-            bool first = true;
-            for (auto c = cols.begin(); c != cols.end(); ++c) {
-                if (!first) query << ", ";
-                first = false;
-                query << c->first.as<std::string>() << " "
-                      << c->second.as<std::string>();
-            }
-            query << ");";
-
-            std::cout << query.str() << std::endl;
-
-            txn.exec(query.str());
+        // 2. Check if the file was successfully opened
+        if (!schema_file.is_open()) {
+            std::cerr << "Error opening file!" << std::endl;
+            return 1; // Indicate an error
         }
+
+        std::stringstream query;
+        
+        query << schema_file.rdbuf(); // Read entire file into stringstream
+
+        txn.exec(query.str());
+
+
+        // for (auto it = tables.begin(); it != tables.end(); ++it) {
+        //     if (!it->second["enabled"].as<bool>()) continue;
+
+        //     std::ostringstream query;
+        //     query << "CREATE TABLE IF NOT EXISTS "
+        //           << it->second["name"].as<std::string>() << " (";
+
+        //     const auto& cols = it->second["columns"];
+        //     bool first = true;
+        //     for (auto c = cols.begin(); c != cols.end(); ++c) {
+        //         if (!first) query << ", ";
+        //         first = false;
+        //         query << c->first.as<std::string>() << " "
+        //               << c->second.as<std::string>();
+        //     }
+        //     query << ");";
+
+        //     std::cout << query.str() << std::endl;
+
+        //     txn.exec(query.str());
+        // }
 
         txn.commit();
         std::cout << "Schema verified for database: " << dbName << std::endl;

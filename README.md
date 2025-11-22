@@ -139,14 +139,18 @@ To run the applications, invoke the respective executable found in the build fol
 ## Some useful commands for testing/sanity checks
 
 ### postgres cli for prompting
-psql -U postgres -d telemetry
+```bash
+sudo -u postgres psql -d telemetry
+```
 
 ### delete database
+```bash
 psql -U postgres -c "DROP DATABASE telemetry;"
-
+```
 ### clear the data in the database but keep defined tables and columns
-psql -U postgres -d telemetry -c "TRUNCATE TABLE payloads RESTART IDENTITY;"
-
+```bash
+sudo -u postgres psql -d telemetry -c "TRUNCATE TABLE payloads RESTART IDENTITY;"
+```
 
 ## Links to d used for testing
 ### small 

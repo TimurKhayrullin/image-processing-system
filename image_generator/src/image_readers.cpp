@@ -11,7 +11,7 @@ bool OpenCVImageReader::can_read(const std::string &filepath) const {
 
 // Uses OpenCV to Read an image file and load it's properties and pixels into memory for sending
 bool OpenCVImageReader::load(const std::string &filepath,
-              std::vector<uint8_t> &outPixels,
+              std::vector<unsigned char> &outPixels,
               uint32_t &w, uint32_t &h, uint32_t &c,
               uint32_t &pixel_format) const 
 {
@@ -31,7 +31,7 @@ bool OpenCVImageReader::load(const std::string &filepath,
 }
 
 // load image metadata directly into an ImageHeader for sending
-bool OpenCVImageReader::load(const std::string &filepath, std::vector<uint8_t> &outPixels, ImageHeader &header) const 
+bool OpenCVImageReader::load(const std::string &filepath, std::vector<unsigned char> &outPixels, ImageHeader &header) const 
 {
     auto res = load(filepath, outPixels, header.width, header.height, header.channels, header.pixel_format);
 

@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
             
             // setup message payload
             ImageHeader header;
-            std::vector<uint8_t> pixels;
+            std::vector<unsigned char> pixels;
 
             // loads image info and pixels into header and pixel vector
             if (!reader->load(filepath, pixels, header)) {

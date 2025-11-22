@@ -58,18 +58,18 @@ deserialize_keypoints(const KeyPointPortable* raw, size_t count)
     return keypoints;
 }
 
-inline std::vector<uint8_t>
+inline std::vector<std::byte>
 serialize_descriptors(const cv::Mat& descriptors)
 {
     const size_t bytes = descriptors.total() * descriptors.elemSize();
-    std::vector<uint8_t> out(bytes);
+    std::vector<std::byte> out(bytes);
 
     std::memcpy(out.data(), descriptors.data, bytes);
     return out;
 }
 
 inline cv::Mat deserialize_descriptors(
-    const uint8_t* raw,
+    const std::byte* raw,
     uint32_t descriptor_count,
     uint32_t descriptor_dim,
     int cv_type

@@ -25,10 +25,10 @@ public:
 protected:
     // Protected (not private) so derived classes can use these internally
     virtual bool connect() = 0;         // Connection setup
-    virtual bool setupSchema() = 0;     // Schema creation or validation
+    virtual bool setup_schema() = 0;     // Schema creation or validation
     virtual void configureParameters() = 0; // Internal configuration
 
-    // Loads YAML configuration (used by derived classes)
+    // Loads YAML configurations (used by derived classes)
     virtual void loadConfig(const std::string& path);
 
     YAML::Node config;

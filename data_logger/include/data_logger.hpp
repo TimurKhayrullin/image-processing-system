@@ -6,10 +6,10 @@
 
 struct Payload{
     ImageHeader image_header;
-    std::vector<uint8_t> pixels;
+    std::vector<std::byte> pixels;
     FeaturesHeader sift_header;
     std::vector<KeyPointPortable> keypoints;
-    std::vector<uint8_t> desc_mat;
+    std::vector<std::byte> desc_mat;
 };
 
 bool recv_payload(

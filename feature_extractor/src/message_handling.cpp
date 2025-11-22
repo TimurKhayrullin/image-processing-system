@@ -9,7 +9,7 @@
 
 bool recv_image(zmq::socket_t& socket,
                 ImageHeader& out_header,
-                std::vector<uint8_t>& out_pixels)
+                std::vector<std::byte>& out_pixels)
 {
     zmq::message_t header_msg;
     zmq::message_t pixel_msg;
@@ -123,7 +123,7 @@ bool recv_image_as_mat( zmq::socket_t& socket,
 
 
 bool send_image_plus_features(zmq::socket_t& socket, zmq::message_t &img_header_msg, zmq::message_t &pixels_msg,
-                            FeaturesHeader &sift_header, std::vector<KeyPointPortable> &keypoints_tosend, std::vector<uint8_t> &desc_mat_data)
+                            FeaturesHeader &sift_header, std::vector<KeyPointPortable> &keypoints_tosend, std::vector<std::byte> &desc_mat_data)
 {
     // send image header
     socket.send(img_header_msg, zmq::send_flags::sndmore);

@@ -16,7 +16,7 @@ public:
 protected:
     // Internal virtual overrides
     bool connect() override;
-    bool setupSchema() override;
+    bool setup_schema() override;
     void configureParameters() override;
 
 private:

@@ -26,7 +26,7 @@ public:
     void set_header(FeaturesHeader &header);
 
     std::vector<KeyPointPortable> serialized_keypoints;
-    std::vector<uint8_t> serialized_descriptors;
+    std::vector<std::byte> serialized_descriptors;
 
 private:
 
