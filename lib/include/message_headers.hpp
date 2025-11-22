@@ -1,6 +1,7 @@
 //declares structs to send image and keypoint/feature messages in a standard format
 #pragma once
 #include <vector>
+#include <cstdint>
 
 // we use pragma pack(push, 1) to line up the struct members contiguously in memory, without padding.
 // This allows us to send the struct using a binary protocol (fast)

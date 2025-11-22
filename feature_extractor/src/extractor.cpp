@@ -44,7 +44,7 @@ void SIFTExtractor::load_config(const std::string& path) {
 }
 
 // process image
-bool SIFTExtractor::extract_features(cv::Mat &img){
+void SIFTExtractor::extract_features(cv::Mat &img){
 
     this->sift_ptr->detectAndCompute(img, cv::noArray(), this->keypoints, this->descriptors);
 

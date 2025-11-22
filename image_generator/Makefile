@@ -7,19 +7,19 @@ CXX := g++
 INCLUDES := \
     -I../lib/include \
     -Iinclude \
-    -I/opt/homebrew/include \
-    -I/opt/homebrew/include/opencv4
+    -I/usr/local/include/opencv4
 
 # ------------------------------------------------------------
 # Compiler and linker flags
 # ------------------------------------------------------------
-CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP -g -fno-omit-frame-pointer -O0
+CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP  # -g -fno-omit-frame-pointer -O0
 
 # Link ZeroMQ + OpenCV
 LDFLAGS := \
     -L../build/lib \
     -lshared \
-    -L/opt/homebrew/lib \
+    -L/usr/lib \
+    -L/usr/lib/x86_64-linux-gnu \
     -lzmq \
     -lopencv_core \
     -lopencv_imgcodecs \

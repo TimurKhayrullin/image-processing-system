@@ -3,22 +3,15 @@ CXX := g++
 INCLUDES := \
         -I../lib/include \
         -Iinclude \
-        -I/opt/homebrew/include \
-        -I/opt/homebrew/opt/libpq/include \
-        -I/opt/homebrew/opt/yaml-cpp/include \
-        -I/opt/homebrew/opt/zeromq/include \
-        -I/opt/homebrew/include \
-	-I/opt/homebrew/include/opencv4
+        -I/usr/local/include/opencv4
 
 CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
 
 LDFLAGS := \
         -L../build/lib \
         -lshared \
-        -L/opt/homebrew/lib \
-        -L/opt/homebrew/opt/libpq/lib \
-        -L/opt/homebrew/opt/yaml-cpp/lib \
-        -L/opt/homebrew/opt/zeromq/lib \
+        -L/usr/lib \
+        -L/usr/lib/x86_64-linux-gnu \
         -lpqxx \
         -lpq \
         -lyaml-cpp \

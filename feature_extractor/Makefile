@@ -3,17 +3,15 @@ CXX := g++
 INCLUDES := \
     -I../lib/include \
     -Iinclude \
-	-I/opt/homebrew/include \
-	-I/opt/homebrew/opt/yaml-cpp/include \
-	-I/opt/homebrew/include/opencv4
+	-I/usr/local/include/opencv4
 
 CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
 
 LDFLAGS := \
 	-L../build/lib \
     -lshared \
-	-L/opt/homebrew/lib \
-	-L/opt/homebrew/opt/yaml-cpp/lib \
+	-L/usr/lib \
+	-L/usr/lib/x86_64-linux-gnu \
 	-lyaml-cpp \
 	-lzmq \
 	-lopencv_core \

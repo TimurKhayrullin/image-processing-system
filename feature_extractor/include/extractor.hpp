@@ -18,7 +18,7 @@ public:
     void load_config(const std::string& config_path);
 
     // called when you want to actually perform the operation
-    bool extract_features(cv::Mat &img);
+    void extract_features(cv::Mat &img);
 
     // called to package result of processing into IPC message
     void serialize_features();
