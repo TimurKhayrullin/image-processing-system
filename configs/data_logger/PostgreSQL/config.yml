@@ -2,7 +2,7 @@
 schema_path: configs/data_logger/PostgreSQL/schema.sql
 
 data_handling:
-  max_db_size_mb: 1024
+  max_db_size_mb: 10240 
   t_size_check_period: 30        # seconds (e.g., __ minutes)
   insert_count_size_check: 10000   # check after every __ inserts
 

@@ -30,5 +30,5 @@ CREATE TABLE IF NOT EXISTS payloads (
     sift_keypoints_size_bytes BIGINT,
     sift_descriptors_size_bytes BIGINT,
     sift_keypoints_data BYTEA,
-    sift_descriptors_data BYTEA,
+    sift_descriptors_data BYTEA
 );  
