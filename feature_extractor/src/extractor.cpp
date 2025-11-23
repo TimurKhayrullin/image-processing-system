@@ -2,49 +2,50 @@
 #include "extractor.hpp"
 #include <yaml-cpp/yaml.h>
 
-SIFTExtractor::SIFTExtractor(const std::string& config_path){
+SIFTParams load_sift_params(const std::string& path) {
+    SIFTParams params;
 
-    // load params struct with values in config
-    load_config(config_path);
+    try {
+        YAML::Node config = YAML::LoadFile(path);
 
-    // create SIFT opencv object
-    this->sift_ptr = cv::SIFT::create(
-        this->params.n_features,
-        this->params.n_octave_layers,
-        this->params.contrast_threshold,
-        this->params.edge_threshold,
-        this->params.sigma,
-        this->params.descriptor_type,
-        this->params.enable_percise_upscale
-    );
+        params.n_features             = config["n_features"].as<uint32_t>();
+        params.n_octave_layers        = config["n_octave_layers"].as<uint32_t>();
+        params.contrast_threshold     = config["contrast_threshold"].as<double>();
+        params.edge_threshold         = config["edge_threshold"].as<double>();
+        params.sigma                  = config["sigma"].as<double>();
+        params.descriptor_type        = config["descriptor_type"].as<uint32_t>();
+        params.enable_percise_upscale = config["enable_percise_upscale"].as<bool>();
 
+        std::cout << "Loaded SIFT parameters from: " << path << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr 
+            << "Failed to load SIFT config from " << path 
+            << ": " << e.what() << std::endl;
+        throw; // propagate, we want the caller to know it failed
+    }
+
+    return params;
+}
+
+SIFTExtractionJob::SIFTExtractionJob(SIFTParams &params, cv::Ptr<cv::SIFT> &sift_ptr){
+
+    this->params = params;
+    this->sift_ptr = sift_ptr;
+    
     // store size of descriptor vector
     this->descriptor_dim = sift_ptr->descriptorSize();
 
     //TODO: maybe reserve keypoints and descriptors containers' size
 }
 
-void SIFTExtractor::load_config(const std::string& path) {
-
-    try {
-        YAML::Node config = YAML::LoadFile(path);
-        this->params.n_features = config["n_features"].as<uint32_t>();
-        this->params.n_octave_layers = config["n_octave_layers"].as<uint32_t>();
-        this->params.contrast_threshold = config["contrast_threshold"].as<double>();
-        this->params.edge_threshold = config["edge_threshold"].as<double>();
-        this->params.sigma = config["sigma"].as<double>();
-        this->params.descriptor_type = config["descriptor_type"].as<uint32_t>();
-        this->params.enable_percise_upscale = config["enable_percise_upscale"].as<bool>();
-        std::cout << "Loaded config for SIFT feature extractor" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Failed to load database config from " << path
-                  << ": " << e.what() << std::endl;
-        throw;
-    }
-}
-
 // process image
-void SIFTExtractor::extract_features(cv::Mat &img){
+void SIFTExtractionJob::extract_features(cv::Mat &img){
+
+    // correct bit depth of image for processing
+    if(img.type() == 18){
+        img.convertTo(img, CV_8U, 1.0 / 256.0);
+    }
 
     this->sift_ptr->detectAndCompute(img, cv::noArray(), this->keypoints, this->descriptors);
 
@@ -52,13 +53,13 @@ void SIFTExtractor::extract_features(cv::Mat &img){
 }
 
 // serialize keypoints and descriptors to contiguous byte array for sending
-void SIFTExtractor::serialize_features(){
+void SIFTExtractionJob::serialize_features(){
 
     this->serialized_keypoints = serialize_keypoints(keypoints);
     this->serialized_descriptors = serialize_descriptors(descriptors);
 }
 
-void SIFTExtractor::set_header(FeaturesHeader &header){
+void SIFTExtractionJob::set_header(FeaturesHeader &header){
 
     // initialize header for sift feature message
     header.params = this->params;

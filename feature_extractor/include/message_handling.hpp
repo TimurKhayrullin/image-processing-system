@@ -1,5 +1,6 @@
 #pragma once
 #include "message_headers.hpp"
+#include "extractor.hpp"
 #include "feature_serialization.hpp"
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -21,4 +22,5 @@ bool recv_image_as_mat( zmq::socket_t& socket,
 bool send_image_plus_features(zmq::socket_t& socket, zmq::message_t &img_header_msg, zmq::message_t &pixels_msg,
                             FeaturesHeader &sift_header, std::vector<KeyPointPortable> &keypoints_tosend, std::vector<std::byte> &desc_mat_data);
 
-
+// method for thread to do extraction work
+void mt_do_extraction(zmq::context_t &context, zmq::message_t header_msg, zmq::message_t pixels_msg, SIFTParams params, cv::Ptr<cv::SIFT> sift_ptr, FeaturesHeader features_header, cv::Mat img);

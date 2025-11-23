@@ -12,6 +12,7 @@
 #include <algorithm> // For std::transform
 #include <cctype>    // For std::toupper
 #include <numeric>
+#include <future>
 #include <zmq.hpp>
 
 int main() {
@@ -20,8 +21,19 @@ int main() {
     // <--- install signal handlers for shutdown
     ShutdownHandler::init(); 
     
-    // Create Processor object
-    SIFTExtractor extractor = SIFTExtractor("configs/feature_extractor/SIFT_params.yml");
+    // read in SIFT extraction parameters from config
+    SIFTParams params = load_sift_params("configs/feature_extractor/SIFT_params.yml");
+
+    // create SIFT extractor object
+    cv::Ptr<cv::SIFT> sift_ptr = cv::SIFT::create(
+        params.n_features,
+        params.n_octave_layers,
+        params.contrast_threshold,
+        params.edge_threshold,
+        params.sigma,
+        params.descriptor_type,
+        params.enable_percise_upscale
+    );
 
     // Create a ZeroMQ context and subscriber socket
     zmq::context_t ctx{1};
@@ -56,11 +68,28 @@ int main() {
     uint64_t proc_time = 0;
     std::vector<uint64_t> proc_times(frame_limit);
 
+
+    std::vector<std::future<void>> futures;
+    const size_t MAX_TASKS = 1;
+
+
     // start receiving images from image generator
     try {
         while (ShutdownHandler::running()) {
 
+            // Remove completed async tasks
+            auto it = futures.begin();
+            while (it != futures.end()) {
+                if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                    it = futures.erase(it);
+                else
+                    ++it;
+            }
+
             if(frame_count >= frame_limit) break;
+
+            // Limit concurrency
+            if (futures.size() >= MAX_TASKS) continue; 
             
             // prepare image + features payload
             FeaturesHeader features_header;
@@ -74,54 +103,42 @@ int main() {
                 continue;
             }
 
+            // std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols
+            //          << " h:" << img.rows << " c:" << img.channels() << " type:" << img.type() << std::endl;
+
             // mark processing payload with timestamp, and set frame number 
             features_header.timestamp_received_ns = get_timestamp_ns_utc();
             features_header.frame_number = img_header.frame_number;
             frame_count++;
-
-            // std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols
-            //          << " h:" << img.rows << " c:" << img.channels() << " type:" << img.type() << std::endl;
-
-            // correct bit depth of image for processing
-            if(img.type() == 18){
-                img.convertTo(img, CV_8U, 1.0 / 256.0);
-            }
-
-            // process image
-            local_timestamp_proc_start = get_timestamp_ns_utc();
-            extractor.extract_features(img);
             frames_since_last_report++;
-            
-            // std::cout << "Processed Image #" << img_header.frame_number << std::endl;
-            
-            // serialize keypoints and descriptors to contiguous byte array for sending
-            extractor.serialize_features();
 
-            // set header values for features message
-            extractor.set_header(features_header);
-            local_timestamp_proc_end = features_header.timestamp_processed_ns;
-
-            // send original image + feature vector
-            send_image_plus_features(
-                publisher, 
-                header_msg, 
-                pixels_msg, 
-                features_header, 
-                extractor.serialized_keypoints, 
-                extractor.serialized_descriptors
+            // start new async extraction job
+            local_timestamp_proc_start = get_timestamp_ns_utc();
+            futures.push_back(
+                std::async(
+                    std::launch::async,
+                    mt_do_extraction,
+                    std::ref(ctx),
+                    std::move(header_msg),
+                    std::move(pixels_msg),
+                    params,
+                    sift_ptr,
+                    features_header,   
+                    std::move(img))
             );
+            
             local_timestamp_payload_sent = get_timestamp_ns_utc();
             local_timestamp_latest_send = local_timestamp_payload_sent;
             local_timestamp_first_send = local_timestamp_first_send ? local_timestamp_first_send : local_timestamp_latest_send; // sets first send to latest send if first send is 0, otherwise does nothing
 
 
-            total_bytes += header_msg.size();
-            total_bytes += pixels_msg.size();
-            total_bytes += sizeof(features_header);
-            total_bytes += extractor.serialized_keypoints.size();
-            total_bytes += extractor.serialized_descriptors.size();
-            proc_time = local_timestamp_proc_end - local_timestamp_proc_start;
-            proc_times[frame_count-1] = proc_time;
+            // total_bytes += header_msg.size();
+            // total_bytes += pixels_msg.size();
+            // total_bytes += sizeof(features_header);
+            // total_bytes += extractor.serialized_keypoints.size();
+            // total_bytes += extractor.serialized_descriptors.size();
+            // proc_time = local_timestamp_proc_end - local_timestamp_proc_start;
+            // proc_times[frame_count-1] = proc_time;
 
             //throughput monitoring
             if ((local_timestamp_payload_sent - local_timestamp_last_report) > one_second) {

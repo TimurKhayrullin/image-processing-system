@@ -1,5 +1,6 @@
 #include "message_handling.hpp"
 #include "message_headers.hpp"
+#include "extractor.hpp"
 #include <opencv2/opencv.hpp>
 #include <zmq.hpp>
 #include <cstdint>
@@ -136,4 +137,65 @@ bool send_image_plus_features(zmq::socket_t& socket, zmq::message_t &img_header_
     socket.send(zmq::buffer(desc_mat_data.data(), sift_header.descriptors_size_bytes), zmq::send_flags::none); // descriptors matrix data
 
     return true;
+}
+
+// method for thread to do extraction work
+void mt_do_extraction(zmq::context_t &context, zmq::message_t header_msg, zmq::message_t pixels_msg, SIFTParams params, cv::Ptr<cv::SIFT> sift_ptr, FeaturesHeader features_header, cv::Mat img){
+
+    try {
+        zmq::socket_t publisher(context, zmq::socket_type::pub);
+
+        // connect to the IPC socket for processed image output
+        publisher.connect("ipc:///tmp/features_pub.sock");
+
+        SIFTExtractionJob extractor(params, sift_ptr);
+
+        extractor.extract_features(img);
+        // frames_since_last_report++;
+        
+        // std::cout << "Processed Image #" << img_header.frame_number << std::endl;
+        
+        // serialize keypoints and descriptors to contiguous byte array for sending
+        extractor.serialize_features();
+
+        // set header values for features message
+        extractor.set_header(features_header);
+        // local_timestamp_proc_end = features_header.timestamp_processed_ns;
+
+        // send original image + feature vector
+        send_image_plus_features(
+            publisher, 
+            header_msg, 
+            pixels_msg, 
+            features_header, 
+            extractor.serialized_keypoints, 
+            extractor.serialized_descriptors
+        );
+        // local_timestamp_payload_sent = get_timestamp_ns_utc();
+        // local_timestamp_latest_send = local_timestamp_payload_sent;
+        // local_timestamp_first_send = local_timestamp_first_send ? local_timestamp_first_send : local_timestamp_latest_send; // sets first send to latest send if first send is 0, otherwise does nothing
+
+
+        // total_bytes += header_msg.size();
+        // total_bytes += pixels_msg.size();
+        // total_bytes += sizeof(features_header);
+        // total_bytes += extractor.serialized_keypoints.size();
+        // total_bytes += extractor.serialized_descriptors.size();
+        // proc_time = local_timestamp_proc_end - local_timestamp_proc_start;
+        // proc_times[frame_count-1] = proc_time;
+    }
+    catch (const zmq::error_t& e) {
+        std::cerr << "[THREAD] ZMQ exception: " << e.what() << std::endl;
+    }
+    catch (const cv::Exception& e) {
+        std::cerr << "[THREAD] OpenCV exception:\n" << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[THREAD] std::exception: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cerr << "[THREAD] unknown exception\n";
+    }
+
+    return;
 }

@@ -6,13 +6,15 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
+SIFTParams load_sift_params(const std::string& path);
+
 // could turn this into an abstract class + concrete class implementation
-class SIFTExtractor {
+class SIFTExtractionJob {
 public:
     // called before starting to send/receive messages, 
     // initializes all memory to be used for processing
     // initializes algorithm parameters if needed
-    SIFTExtractor(const std::string& config_path); 
+    SIFTExtractionJob(SIFTParams &params, cv::Ptr<cv::SIFT> &sift_ptr); 
 
     // load parameters in from config file
     void load_config(const std::string& config_path);
