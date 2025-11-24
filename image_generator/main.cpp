@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
     uint64_t total_bytes = 0;
 
     // averaging calculations
-    uint64_t frame_limit = 100;
+    std::optional<uint64_t> frame_limit = std::nullopt; // std::nullopt for no limit
     uint64_t local_timestamp_first_send = 0;
     uint64_t local_timestamp_latest_send = 0;
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
         // iterate over entire directory, creating a new iterator with each new loop.
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
 
-            if(frame_count >= frame_limit) raise(SIGINT); // once frame limit is reached, sends a signal to the generator as if Ctrl+C was pressed
+            if(frame_limit && frame_count >= frame_limit) break; // break once frame limit is reached if there is one
             if(!ShutdownHandler::running()) break;
 
             if (!entry.is_regular_file())
@@ -127,12 +127,14 @@ int main(int argc, char* argv[]) {
             
             //throughput monitoring
             if ((local_timestamp_latest_send - local_timestamp_last_report) > one_second) {
-                std::cout << "Throughput: " << frames_since_last_report << " FPS\n"; 
+                std::cout << frame_count << "/" << (frame_limit ? std::to_string(*frame_limit) : "inf") << ", Throughput: " << frames_since_last_report << " FPS\n"; 
                 frames_since_last_report = 0; 
                 local_timestamp_last_report = local_timestamp_latest_send;
             }
 
         }
+
+        if(frame_limit && frame_count >= frame_limit) break; // break once frame limit is reached if there is one
 
     }
 

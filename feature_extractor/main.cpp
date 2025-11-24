@@ -40,7 +40,7 @@ int main() {
     zmq::socket_t subscriber(ctx, zmq::socket_type::sub);
     zmq::socket_t publisher(ctx, zmq::socket_type::pub);
 
-    // Bind to the same IPC socket the image generator bound to
+    // bind to the same IPC socket the image generator bound to
     subscriber.bind("ipc:///tmp/camera_pub.sock");
 
     // connect to the IPC socket for processed image output
@@ -51,6 +51,10 @@ int main() {
 
     std::cout << "Listening for messages on ipc:///tmp/camera_pub.sock ..." << std::endl;
 
+    // keep track of frames sent, and optionally sets a frame limit
+    uint64_t frame_count = 0;
+    std::optional<uint64_t> frame_limit = std::nullopt; //std::nullopt for no frame limit
+
     // keeps track of timestamps for throughput monitoring
     uint64_t frames_since_last_report = 0;
     uint64_t one_second = 1e9;
@@ -58,19 +62,15 @@ int main() {
     uint64_t local_timestamp_payload_sent = 0;
     uint64_t total_bytes = 0;
 
-    // averaging calculations
-    uint64_t frame_count = 0;
-    uint64_t frame_limit = 100;
+    // timestamps for averaging calculations
     uint64_t local_timestamp_first_send = 0;
     uint64_t local_timestamp_latest_send = 0;
-    uint64_t local_timestamp_proc_start = 0;
-    uint64_t local_timestamp_proc_end = 0;
-    uint64_t proc_time = 0;
-    std::vector<uint64_t> proc_times(frame_limit);
+    std::vector<uint64_t> proc_times;
+    proc_times.reserve(frame_limit.value_or(10000));
 
 
-    std::vector<std::future<void>> futures;
-    const size_t MAX_TASKS = 1;
+    std::vector<std::future<std::tuple<uint64_t, uint64_t, uint64_t>>> futures;
+    const size_t MAX_TASKS = 1; // TODO: move to config
 
 
     // start receiving images from image generator
@@ -80,13 +80,25 @@ int main() {
             // Remove completed async tasks
             auto it = futures.begin();
             while (it != futures.end()) {
-                if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready){
+
+                    //Get the return value from thread
+                    auto [frame_num, proc_time, num_bytes_sent] = it->get();
+
+                    // store processing time and number of bytes sent
+                    proc_times.push_back(proc_time);
+                    total_bytes += num_bytes_sent;
+
+                    // erase task
                     it = futures.erase(it);
-                else
-                    ++it;
+                }
+                else{
+                    it++;
+                }
+                    
             }
 
-            if(frame_count >= frame_limit) break;
+            if(frame_limit && frame_count >= frame_limit) break;
 
             // Limit concurrency
             if (futures.size() >= MAX_TASKS) continue; 
@@ -113,11 +125,11 @@ int main() {
             frames_since_last_report++;
 
             // start new async extraction job
-            local_timestamp_proc_start = get_timestamp_ns_utc();
             futures.push_back(
                 std::async(
                     std::launch::async,
                     mt_do_extraction,
+                    frame_count,
                     std::ref(ctx),
                     std::move(header_msg),
                     std::move(pixels_msg),
@@ -126,27 +138,39 @@ int main() {
                     features_header,   
                     std::move(img))
             );
-            
             local_timestamp_payload_sent = get_timestamp_ns_utc();
             local_timestamp_latest_send = local_timestamp_payload_sent;
             local_timestamp_first_send = local_timestamp_first_send ? local_timestamp_first_send : local_timestamp_latest_send; // sets first send to latest send if first send is 0, otherwise does nothing
 
-
-            // total_bytes += header_msg.size();
-            // total_bytes += pixels_msg.size();
-            // total_bytes += sizeof(features_header);
-            // total_bytes += extractor.serialized_keypoints.size();
-            // total_bytes += extractor.serialized_descriptors.size();
-            // proc_time = local_timestamp_proc_end - local_timestamp_proc_start;
-            // proc_times[frame_count-1] = proc_time;
-
-            //throughput monitoring
+            // throughput monitoring
             if ((local_timestamp_payload_sent - local_timestamp_last_report) > one_second) {
-                std::cout << frame_count << "/" << frame_limit << ", Throughput: " << frames_since_last_report << " FPS\n"; 
+                std::cout << frame_count << "/" << (frame_limit ? std::to_string(*frame_limit) : "inf") << ", Throughput: " << frames_since_last_report << " FPS\n"; 
                 frames_since_last_report = 0; 
                 local_timestamp_last_report = local_timestamp_payload_sent;
             }
         }
+
+        // Remove completed async tasks after loop ends
+        auto it = futures.begin();
+        while (it != futures.end()) {
+            if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready){
+
+                //Get the return value from thread
+                auto [frame_num, proc_time, num_bytes_sent] = it->get();
+
+                // store processing time and number of bytes sent
+                proc_times.push_back(proc_time);
+                total_bytes += num_bytes_sent;
+
+                // erase task
+                it = futures.erase(it);
+            }
+            else{
+                it++;
+            }
+        }
+
+
     }
     catch (const zmq::error_t& e) {
         if (!ShutdownHandler::running()) {

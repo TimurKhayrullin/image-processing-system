@@ -23,4 +23,4 @@ bool send_image_plus_features(zmq::socket_t& socket, zmq::message_t &img_header_
                             FeaturesHeader &sift_header, std::vector<KeyPointPortable> &keypoints_tosend, std::vector<std::byte> &desc_mat_data);
 
 // method for thread to do extraction work
-void mt_do_extraction(zmq::context_t &context, zmq::message_t header_msg, zmq::message_t pixels_msg, SIFTParams params, cv::Ptr<cv::SIFT> sift_ptr, FeaturesHeader features_header, cv::Mat img);
+std::tuple<uint64_t, uint64_t, uint64_t> mt_do_extraction(uint64_t frame_number, zmq::context_t &context, zmq::message_t header_msg, zmq::message_t pixels_msg, SIFTParams params, cv::Ptr<cv::SIFT> sift_ptr, FeaturesHeader features_header, cv::Mat img);

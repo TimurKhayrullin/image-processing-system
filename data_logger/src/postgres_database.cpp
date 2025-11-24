@@ -230,17 +230,24 @@ bool PostgresDatabase::logData(const Payload& payload, uint64_t timestamp_insert
 bool PostgresDatabase::performInsert(pqxx::work& txn, const Payload& payload, uint64_t timestamp_insert_ns)
 {
 
-    std::basic_string<std::byte> img_bytes(
-        reinterpret_cast<const std::byte*>(payload.pixels.data()),
-        payload.pixels.size());
+    // ---- ZERO-COPY BINARY WRAPPING ----
+    const void* img_ptr  = payload.pixels.data();
+    std::size_t img_size = payload.pixels.size();
 
-    std::basic_string<std::byte> kp_bytes(
-        reinterpret_cast<const std::byte*>(payload.keypoints.data()),
-        payload.keypoints.size() * sizeof(KeyPointPortable));
+    const void* kp_ptr   = payload.keypoints.data();
+    std::size_t kp_size  = payload.keypoints.size() * sizeof(KeyPointPortable);
 
-    std::basic_string<std::byte> desc_bytes(
-        reinterpret_cast<const std::byte*>(payload.desc_mat.data()),
-        payload.desc_mat.size());
+    const void* desc_ptr = payload.desc_mat.data();
+    std::size_t desc_size = payload.desc_mat.size();
+
+    //suppress warnings
+
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    pqxx::binarystring img_bytes(img_ptr, img_size);
+    pqxx::binarystring kp_bytes(kp_ptr, kp_size);
+    pqxx::binarystring desc_bytes(desc_ptr, desc_size);
+    #pragma GCC diagnostic pop
     
     // this is marked depracted, but this version of libpqxx doesn't have the newer API for prepared statements
     // and newer version is c++20 only.

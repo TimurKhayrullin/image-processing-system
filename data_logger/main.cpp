@@ -44,20 +44,19 @@ int main() {
 
     // averaging calculations
     uint64_t frame_count = 0;
-    uint64_t frame_limit = 100;
+    std::optional<uint64_t> frame_limit = std::nullopt; //std::nullopt for no limit
     uint64_t local_timestamp_first_insert = 0;
     uint64_t local_timestamp_latest_insert = 0;
     uint64_t local_timestamp_insert_start = 0;
     uint64_t local_timestamp_insert_end = 0;
     uint64_t insert_time = 0;
-    std::vector<uint64_t> insert_times(frame_limit);
+    std::vector<uint64_t> insert_times;
+    insert_times.reserve(frame_limit.value_or(10000));
 
     try {
         while (ShutdownHandler::running()) {
 
-            if(frame_count>=frame_limit) break;
-
-            zmq::message_t msg;
+            if(frame_limit && frame_count>=frame_limit) break;
 
             Payload payload;
 
@@ -80,11 +79,15 @@ int main() {
                 frames_since_last_report++;
                 insert_time = local_timestamp_insert_end - local_timestamp_insert_start;
                 total_bytes += sizeof(payload);
-                insert_times[frame_count++] = insert_time;
+                total_bytes += payload.pixels.size()
+                            + payload.desc_mat.size()
+                            + payload.keypoints.size() * sizeof(KeyPointPortable);
+                insert_times.push_back(insert_time);
+                frame_count++;
 
                 //throughput monitoring
                 if ((timestamp_ns - local_timestamp_last_report) > one_second) {
-                    std::cout << "Throughput: " << frames_since_last_report << " FPS\n"; 
+                    std::cout << frame_count << "/" << (frame_limit ? std::to_string(*frame_limit) : "inf") << ", Throughput: " << frames_since_last_report << " FPS\n"; 
                     frames_since_last_report = 0; 
                     local_timestamp_last_report = timestamp_ns;
                 }
@@ -106,7 +109,7 @@ int main() {
     auto const count = static_cast<float>(insert_times.size());
     float avg_insert_time = std::reduce(insert_times.begin(), insert_times.end()) / count;
 
-    std::cout << "Average insertion time: " << avg_insert_time / one_second << " seconds per frame\n";
+    std::cout << "Average insertion time: " << avg_insert_time / one_second << " seconds per load\n";
 
     // throughput calculation
     uint64_t elapsed_ns = local_timestamp_latest_insert - local_timestamp_first_insert;
