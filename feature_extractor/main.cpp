@@ -44,9 +44,6 @@ int main() {
     // bind to the same IPC socket the image generator connects to
     subscriber.bind("ipc:///tmp/camera_pub.sock");
 
-    // connect to the IPC socket for processed image output
-
-
     // Subscribe to all messages (empty filter = all topics)
     subscriber.set(zmq::sockopt::subscribe, "");
     subscriber.set(zmq::sockopt::rcvtimeo, 500);   // 0.5s timeout
@@ -115,9 +112,6 @@ int main() {
             if (!recv_image(subscriber, img_header, image_data)){
                 continue;
             }
-
-            // std::cout << "Recieved image #" << img_header.frame_number << " w:" << img.cols
-            //          << " h:" << img.rows << " c:" << img.channels() << " type:" << img.type() << std::endl;
 
             // mark processing payload with timestamp, and set frame number 
             features_header.timestamp_received_ns = get_timestamp_ns_utc();

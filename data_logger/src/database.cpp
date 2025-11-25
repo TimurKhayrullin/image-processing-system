@@ -1,3 +1,4 @@
+// abstract database class made so that one can connect a different kind of database easily
 #include "database.hpp"
 
 Database::Database(const std::string& name)

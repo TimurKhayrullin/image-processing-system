@@ -1,9 +1,13 @@
+// implementations for helper methods that pertain to data logger, 
+// namely receiving of payloads via ZMQ
+
 #include "data_logger.hpp"
 #include "message_headers.hpp"
 #include "feature_serialization.hpp"
 #include <zmq.hpp>
 #include <iostream>
 
+// receives message from zmq socket and copies contents into payload struct
 bool recv_payload(
     zmq::socket_t& socket,
     Payload &payload

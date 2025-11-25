@@ -1,7 +1,12 @@
+// concrete implementation of abstract database class, specialized for postgres.
+// if we needed to connect to a different database (ex SQLite), this implementation
+// could be mimiced
+
 #include "data_logger.hpp"
 #include "postgres_database.hpp"
 #include <fstream>
 
+// constructor
 PostgresDatabase::PostgresDatabase(const std::string& config_path)
     : Database(config_path) {
 
@@ -55,6 +60,7 @@ bool PostgresDatabase::connect() {
     return false;
 }
 
+// configure connection parameters based on config file values
 void PostgresDatabase::configureParameters() {
     const auto& db = config["database"];
     std::ostringstream conninfo;
@@ -66,6 +72,8 @@ void PostgresDatabase::configureParameters() {
     connectionInfo = conninfo.str();
 }
 
+// read in schema file from path defined in database config
+// essentially treats the whole file as a query statement that initializes all the tables
 bool PostgresDatabase::setup_schema() {
     if (!isConnected || !connection || !connection->is_open()) return false;
 
@@ -131,6 +139,8 @@ void PostgresDatabase::prepareStatements() {
 //  Database size management
 // -----------------------------------------------------------
 
+// to avoid querying the database size all the time, we check if a certain time 
+// has passed (or if there have been a certain number of inserts) before actually checking database size
 bool PostgresDatabase::shouldRecheckSize() {
     using namespace std::chrono;
     auto now = steady_clock::now();
@@ -144,6 +154,9 @@ bool PostgresDatabase::shouldRecheckSize() {
     return false;
 }
 
+// executes a query to check total database size, 
+// checks if it exceeds the limit originally defined in config file 
+// stores whether size has been exceeded in member variable
 bool PostgresDatabase::isDatabaseTooLarge() {
     try {
         pqxx::work txn(*connection);
@@ -164,22 +177,25 @@ bool PostgresDatabase::isDatabaseTooLarge() {
 // -----------------------------------------------------------
 //  Logging entry point
 // -----------------------------------------------------------
-
+// insert all information in a payload into database
 bool PostgresDatabase::logData(const Payload& payload, uint64_t timestamp_insert_ns) {
     if (!isConnected || !connection || !connection->is_open()) {
         std::cerr << "Database not connected, cannot log data." << std::endl;
         return false;
     }
 
+    // maybe check database size
     if (shouldRecheckSize()) {
         isDatabaseTooLarge();
     }
 
+    // if database too large, don't execute insert
     if (db_too_large_cached) {
         std::cerr << "[Postgres] Skipping log (database exceeds limit)\n";
         return false;
     }
 
+    // initialize transaction and perform insert
     try {
 
         pqxx::work txn(*connection);
@@ -204,6 +220,7 @@ bool PostgresDatabase::logData(const Payload& payload, uint64_t timestamp_insert
 // -----------------------------------------------------------
 //  Helper: actually do the insert operation
 // -----------------------------------------------------------
+// this method was written to reduce verbosity of above method
 bool PostgresDatabase::performInsert(pqxx::work& txn, const Payload& payload, uint64_t timestamp_insert_ns)
 {
 
@@ -221,8 +238,9 @@ bool PostgresDatabase::performInsert(pqxx::work& txn, const Payload& payload, ui
     std::basic_string<std::byte> desc_bytes(
         reinterpret_cast<const std::byte*>(payload.desc_mat.data()),
         payload.desc_mat.size());
-            
-    // this is marked depracted, but this version of libpqxx doesn't have the newer API for prepared statements
+    
+    // perform insert via prepared query statement
+    // this technique is marked depracted, but this version of libpqxx doesn't have the newer API for prepared statements
     // and newer version is c++20 only.
     txn.exec_prepared(
         "insert_payload",

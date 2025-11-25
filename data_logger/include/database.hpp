@@ -1,3 +1,5 @@
+// abstract database header
+
 #pragma once
 #include "data_logger.hpp"
 #include <string>

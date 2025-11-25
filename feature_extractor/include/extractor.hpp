@@ -1,5 +1,4 @@
-// Goal: want to make it easy to switch away from SIFT in the future
-// (for example, to other feature descriptors like FAST, SURF, or even ML/DL methods)
+// header file for extraction job
 #pragma once
 #include "message_headers.hpp"
 #include "feature_serialization.hpp"

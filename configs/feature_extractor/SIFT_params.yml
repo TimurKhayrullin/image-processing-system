@@ -1,3 +1,5 @@
+# This config allows customization of SIFT algorithm used by feature extractor
+
 n_features: 0 # keep n features per octave, 0 means collect all available keypoints
 n_octave_layers: 3
 contrast_threshold: 0.04

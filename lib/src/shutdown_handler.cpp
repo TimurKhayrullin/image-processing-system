@@ -24,6 +24,7 @@ bool ShutdownHandler::running() {
     return keep_running.load(std::memory_order_relaxed);
 }
 
+// defines which OS signals trigger the shutdown routine
 void ShutdownHandler::handle_signal(int sig) {
     switch (sig) {
     case SIGINT:

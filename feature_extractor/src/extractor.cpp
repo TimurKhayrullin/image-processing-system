@@ -1,7 +1,12 @@
+// The ExtractionJob class abstracts away the process of extracting keypoints and descriptor vectors,
+// In the event that someone would want to change SIFT for a different algorithm, or use a library 
+// other than OpenCV, they could work off of this abstraction.
+
 #include "shared.hpp"
 #include "extractor.hpp"
 #include <yaml-cpp/yaml.h>
 
+// function for loading SIFT extraction parameters from config file using yaml-cpp
 SIFTParams load_sift_params(const std::string& path) {
     SIFTParams params;
 
@@ -28,6 +33,7 @@ SIFTParams load_sift_params(const std::string& path) {
     return params;
 }
 
+// constructs an extraction job
 SIFTExtractionJob::SIFTExtractionJob(SIFTParams &params, cv::Ptr<cv::SIFT> &sift_ptr){
 
     this->params = params;
@@ -36,10 +42,9 @@ SIFTExtractionJob::SIFTExtractionJob(SIFTParams &params, cv::Ptr<cv::SIFT> &sift
     // store size of descriptor vector
     this->descriptor_dim = sift_ptr->descriptorSize();
 
-    //TODO: maybe reserve keypoints and descriptors containers' size
 }
 
-// process image
+// do extraction work
 void SIFTExtractionJob::extract_features(cv::Mat &img){
 
     this->sift_ptr->detectAndCompute(img, cv::noArray(), this->keypoints, this->descriptors);
@@ -54,9 +59,9 @@ void SIFTExtractionJob::serialize_features(){
     this->serialized_descriptors = serialize_descriptors(descriptors);
 }
 
+// set features header with relevant info regarding the algorithm and its outputs
 void SIFTExtractionJob::set_header(FeaturesHeader &header){
 
-    // initialize header for sift feature message
     header.params = this->params;
     header.timestamp_processed_ns    = this->timestamp_processed_ns;    
     header.descriptor_count          = header.keypoint_count = this->keypoints.size();
