@@ -9,18 +9,10 @@
 
 namespace fs = std::filesystem;
 
-
-// get file location as input
-
-// Read an arbitrary number of images from a specified location then package and
-// send the image data via IPC to 
-
-// Image data should be published continuously until the application is stopped. If all
-// images from the input folder have been published, loop over the folder again…
-// forever 
-
-// The app should be able to handle images of varying sizes and resolutions (e.g. few
-// KB to >30MB)
+// Reads an arbitrary number of images from a specified location then package and
+// send the image data via IPC to the feature extractor. Image data is published 
+// continuously until the application is stopped. If all
+// images from the input folder have been published, loop over the folder again forever
 int main(int argc, char* argv[]) {
 
     if (argc < 2) {
@@ -30,9 +22,10 @@ int main(int argc, char* argv[]) {
 
     print_banner("Image Generator Started");
     
-    // <--- install signal handlers for shutdown
+    // inititalizes signals for graceful shutdown
     ShutdownHandler::init();     
 
+    // gets directory of images
     fs::path path(argv[1]);
 
     // check that directory exists
@@ -48,23 +41,25 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // ZeroMQ for easy ICP customization, abstraction.
+    // For IPC management, we use ZeroMQ for easy ICP customization, abstraction.
     // Here we implement the publisher/subscriber pattern using Unix domain sockets
     zmq::context_t ctx{1}; // init context with 1 internal thread used for asynchronous sending/receiving.
     zmq::socket_t sender(ctx, zmq::socket_type::pub);
-    // Allow at most N queued messages in internal zmq queue 
+
+    // Allow at most 250 queued messages in internal zmq queue 
     sender.set(zmq::sockopt::sndhwm, 250);
     sender.connect("ipc:///tmp/camera_pub.sock");
 
-    // keeps track of how many frames have been read
+    // keeps track of how many frames have been loaded and sent
     uint64_t frame_count = 0;
+    std::optional<uint64_t> frame_limit = std::nullopt; // std::nullopt for no limit
 
     // keeps track of timestamps and frames/bytes for throughput monitoring
     uint64_t frames_since_last_report = 0;
     uint64_t one_second = 1e9;
     uint64_t local_timestamp_last_report = get_timestamp_ns_utc();
     
-    double max_mbps = 600.0;   // <--- configure desired rate
+    double max_mbps = 600.0;   // configure desired throughput rate
     uint64_t bytes_since_last_report = 0;
     uint64_t throughput_limit = (uint64_t)(max_mbps * 1024.0 * 1024.0); // max bytes per second
     uint64_t total_bytes = 0;
@@ -73,7 +68,6 @@ int main(int argc, char* argv[]) {
     uint64_t payload_bytes = 0;
 
     // averaging calculations
-    std::optional<uint64_t> frame_limit = std::nullopt; // std::nullopt for no limit
     uint64_t local_timestamp_first_send = 0;
     uint64_t local_timestamp_latest_send = 0;
     uint64_t local_timestamp_last_loadsend_attempt = 0;
@@ -83,7 +77,8 @@ int main(int argc, char* argv[]) {
     fs::directory_iterator dit_it_end = fs::end(dir_it); // end of directory
 
 
-    // Publishes all the images to the zmq topic, and once all of them have been published loops over them again
+    // walks entire directory of images, loads and publishes an image if throughput limit allows. 
+    // restarts directory traversal if we've gone through all images
     while (ShutdownHandler::running()) {
 
         // if we reached end of directory, restart
@@ -125,7 +120,7 @@ int main(int argc, char* argv[]) {
             header.timestamp_ns = get_timestamp_ns_utc();
             header.frame_number = frame_count;
 
-            if(!ShutdownHandler::running()) break;
+            if(!ShutdownHandler::running()) break; // check if we need to shutdown
 
             // publish the image header and pixels via ZeroMQ, using a multipart message.
             // using a multipart message minimizes buffer allocations and copies. Also allows streaming.
@@ -135,14 +130,17 @@ int main(int argc, char* argv[]) {
             sender.send(zmq::buffer(image_data.data(), header.image_size_bytes),
                         zmq::send_flags::none);
 
+            // timestamps for throughput average calculation
             local_timestamp_last_loadsend_attempt = get_timestamp_ns_utc();
             local_timestamp_latest_send = local_timestamp_last_loadsend_attempt;
             local_timestamp_first_send = local_timestamp_first_send ? local_timestamp_first_send : local_timestamp_last_loadsend_attempt; // sets first send to latest send if first send is 0, otherwise does nothing
 
+            // calculating number of bytes sent
             payload_bytes = sizeof(header) + header.image_size_bytes;
             total_bytes += payload_bytes;
             bytes_since_last_report += payload_bytes;
             
+            // increment all counters as well as directory iterator, move on to next file
             frames_since_last_report++;
             frame_count++;
             dir_it++;
@@ -158,13 +156,15 @@ int main(int argc, char* argv[]) {
 
     }
 
-    sender.set(zmq::sockopt::linger, 0); // Drop any unsent messages immediately. Do NOT block on socket close.
+    sender.set(zmq::sockopt::linger, 0); // when done, Drop any unsent messages immediately. Do NOT block on socket close.
+    
+    // close IPC connections
     sender.close();
     ctx.close();
 
     print_banner("Image Generator Terminated");
 
-    // throughput calculation
+    // Average throughput calculation
     uint64_t elapsed_ns = local_timestamp_latest_send - local_timestamp_first_send;
     double elapsed_s    = elapsed_ns / one_second;
     double mbps = (total_bytes / elapsed_s) / (1024.0 * 1024.0);
