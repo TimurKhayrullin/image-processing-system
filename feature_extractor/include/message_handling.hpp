@@ -17,6 +17,7 @@ bool send_image_plus_features(zmq::socket_t& socket, ImageHeader &image_header, 
 // method for thread to do extraction work
 std::tuple<uint64_t, uint64_t, uint64_t> mt_do_extraction(uint64_t frame_number, 
                                                         zmq::context_t &context,
+                                                        const std::string pub_socket_addr,
                                                         ImageHeader image_header,
                                                         std::vector<uint8_t> image_data, 
                                                         SIFTParams params, 

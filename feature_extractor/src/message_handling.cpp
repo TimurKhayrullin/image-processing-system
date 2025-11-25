@@ -78,6 +78,7 @@ bool send_image_plus_features(zmq::socket_t& socket, ImageHeader &image_header, 
 // method for async thread to do extraction work
 std::tuple<uint64_t, uint64_t, uint64_t> mt_do_extraction(uint64_t frame_number, 
                                                         zmq::context_t &context,
+                                                        const std::string pub_socket_addr,
                                                         ImageHeader image_header,
                                                         std::vector<uint8_t> image_data,
                                                         SIFTParams params, 
@@ -97,7 +98,7 @@ std::tuple<uint64_t, uint64_t, uint64_t> mt_do_extraction(uint64_t frame_number,
         zmq::socket_t publisher(context, zmq::socket_type::pub);
 
         // connect to the IPC socket for processed image output
-        publisher.connect("ipc:///tmp/features_pub.sock");
+        publisher.connect(pub_socket_addr);
 
         // decode image_data into 8-bit cv matrix
         cv::Mat img = cv::imdecode(image_data, cv::IMREAD_COLOR);

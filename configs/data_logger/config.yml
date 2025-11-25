@@ -1,0 +1,1 @@
+zmq_sub_socket: "ipc:///tmp/features_pub.sock" # address for zmq ipc socket to subscribe to. this should be the same as given feature exctractor's zmq_pub_socket. 

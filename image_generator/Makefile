@@ -14,12 +14,13 @@ INCLUDES := \
 # ------------------------------------------------------------
 CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP  # -g -fno-omit-frame-pointer -O0
 
-# Link ZeroMQ + OpenCV
+# Link ZeroMQ + OpenCV + yamlcpp
 LDFLAGS := \
     -L../build/lib \
     -lshared \
     -L/usr/lib \
     -L/usr/lib/x86_64-linux-gnu \
+    -lyaml-cpp \
     -lzmq \
     -lopencv_core \
     -lopencv_imgcodecs \

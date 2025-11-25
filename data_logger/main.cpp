@@ -6,6 +6,7 @@
 #include "postgres_database.hpp"
 #include <csignal>
 #include <atomic>
+#include <yaml-cpp/yaml.h>
 #include <zmq.hpp>
 
 // the Data Logger Receives processed data (image data + key points/descriptors) and save the data for future analysis
@@ -15,6 +16,8 @@ int main() {
 
     // <--- install signal handlers for shutdown
     ShutdownHandler::init();
+
+    YAML::Node config = YAML::LoadFile("configs/data_logger/config.yml");
 
     // initialize database
     PostgresDatabase db("configs/data_logger/PostgreSQL/config.yml");
@@ -33,13 +36,13 @@ int main() {
     subscriber.set(zmq::sockopt::sndhwm, 1000);
 
     // Connect to the same IPC socket the Feature extractor is bound to
-    subscriber.bind("ipc:///tmp/features_pub.sock");
+    subscriber.bind(config["zmq_sub_socket"].as<std::string>());
 
     // Subscribe to all messages (empty filter = all topics)
     subscriber.set(zmq::sockopt::subscribe, "");
     subscriber.set(zmq::sockopt::rcvtimeo, 500);   // 0.5s timeout
 
-    std::cout << "Listening for messages on ipc:///tmp/features_pub.sock ..." << std::endl;
+    std::cout << "Listening for messages on" << config["zmq_sub_socket"].as<std::string>() << "ipc:///tmp/features_pub.sock ..." << std::endl;
 
     // keeps track of timestamps for throughput monitoring
     uint64_t frames_since_last_report = 0;

@@ -9,6 +9,7 @@
 #include <string>
 #include <numeric>
 #include <future>
+#include <yaml-cpp/yaml.h>
 #include <zmq.hpp>
 
 
@@ -19,9 +20,12 @@ int main() {
 
     // inititalizes signals for graceful shutdown
     ShutdownHandler::init(); 
+
+    // read in extractor config file
+    YAML::Node config = YAML::LoadFile("configs/feature_extractor/config.yml");
     
-    // read in SIFT extraction parameters from config
-    SIFTParams params = load_sift_params("configs/feature_extractor/SIFT_params.yml");
+    // read in SIFT extraction parameters from param config file defined in general extractor config 
+    SIFTParams params = load_sift_params(config["alg_param_config"].as<std::string>());
 
     // create SIFT extractor object
     cv::Ptr<cv::SIFT> sift_ptr = cv::SIFT::create(
@@ -38,21 +42,27 @@ int main() {
     zmq::context_t ctx{1};
     zmq::socket_t subscriber(ctx, zmq::socket_type::sub);
 
-    // Limit inbound queue to 250 messages
-    subscriber.set(zmq::sockopt::rcvhwm, 250);
+    // Limit inbound queue to max number of messages, as per config
+    subscriber.set(zmq::sockopt::rcvhwm, config["zmq_sub_hwm"].as<int>());
 
-    // bind to the same IPC socket the image generator connects to
-    subscriber.bind("ipc:///tmp/camera_pub.sock");
+    // bind to the same IPC socket the image generator connects to, as per config
+    subscriber.bind(config["zmq_sub_socket"].as<std::string>());
+
+    const std::string pub_socket_addr = config["zmq_pub_socket"].as<std::string>(); // sets publisher socket address as per config
 
     // Subscribe to all messages (empty filter = all topics)
     subscriber.set(zmq::sockopt::subscribe, "");
-    subscriber.set(zmq::sockopt::rcvtimeo, 500);   // 0.5s timeout
+    subscriber.set(zmq::sockopt::rcvtimeo, config["zmq_recv_timeout_ms"].as<int>()); // receive command timeout in milliseconds as per config
 
-    std::cout << "Listening for messages on ipc:///tmp/camera_pub.sock ..." << std::endl;
+    std::cout << "Listening for messages on" << config["zmq_sub_socket"].as<std::string>() << "..." << std::endl;
 
     // keep track of frames sent, and optionally sets a frame limit
     uint64_t frame_count = 0;
-    std::optional<uint64_t> frame_limit = std::nullopt; //std::nullopt for no frame limit
+
+    // sets frame_limit to std::nullopt for no limit (config value is null) otherwise frame_limit int from config
+    std::optional<uint64_t> frame_limit;
+    if(config["frame_limit"].IsNull()) frame_limit = std::nullopt;
+    else frame_limit = config["frame_limit"].as<uint64_t>();
 
     // keeps track of timestamps for throughput monitoring
     uint64_t frames_since_last_report = 0;
@@ -69,7 +79,7 @@ int main() {
 
     // initializing vector of thread futures used to optionally parallelize SIFT extraction 
     std::vector<std::future<std::tuple<uint64_t, uint64_t, uint64_t>>> futures;
-    const size_t MAX_TASKS = 1; // TODO: move to config
+    const size_t MAX_TASKS = config["num_threads"].as<size_t>(); // max number of asycn extraction threads allowed
 
 
     // start receiving images from image generator
@@ -126,6 +136,7 @@ int main() {
                     mt_do_extraction,
                     frame_count,
                     std::ref(ctx),
+                    pub_socket_addr,
                     img_header,
                     std::move(image_data),
                     params,
@@ -175,7 +186,7 @@ int main() {
             std::cerr << "ZMQ error: " << e.what() << std::endl;
         }
     }
-
+    futures.clear();
     subscriber.set(zmq::sockopt::linger, 0); // Drop any unsent messages immediately. Do NOT block on socket close.
 
     // close IPC connections

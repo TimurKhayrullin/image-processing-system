@@ -1,0 +1,15 @@
+alg_param_config: "configs/feature_extractor/SIFT_params.yml" # sets location of extraction algorithm parameter config
+
+frame_limit: null # set frame limit null to run indefinetely, or put an integer to limit the amount of frames sent. Once limit is reached, program is stopped
+
+# max number of unreceived messages stored in image subscribers internal ZMQ message queue. This is called the "high-water mark".Once exceeded messages will begin to be dropped from that queue 
+zmq_sub_hwm: 250 # it's recommended to keep this number the same as sub_hwm in the extractor, otherwise one or the other queue could fill up and never empty, causing OOM errors.
+
+zmq_sub_socket: "ipc:///tmp/camera_pub.sock" # address for zmq ipc socket to subscribe to. this should be the same as given image generator's zmq_pub_socket. 
+
+zmq_pub_socket: "ipc:///tmp/features_pub.sock" # address for zmq ipc socket to publish to. this should be the same as given data logger's zmq_sub_socket. 
+
+zmq_recv_timeout_ms: 500 # defines number of milliseconds after which a zmq recv command will give up 
+
+num_threads: 1 # sets max number of async extractionjob threads allowed to run.
+

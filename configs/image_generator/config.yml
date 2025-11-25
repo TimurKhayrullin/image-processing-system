@@ -1,0 +1,12 @@
+# set frame limit null to run indefinetely, or put an integer to limit the amount of frames sent. Once limit is reached, program is stopped
+frame_limit: null 
+
+# max megabytes of data sent per second. helps mimic actual camera behaviour and also prevents too many messages from filling up queue
+max_throughput_mbps: 600.0 
+
+# address of zmq publisher socket to connect to. here we use a Unix Domain Socket, but this can easily be changed to a UDP socket for example
+zmq_pub_socket: "ipc:///tmp/camera_pub.sock"
+
+# max number of unreceived messages stored in publishers internal ZMQ message queue. This is called the "high-water mark".Once exceeded messages will begin to be dropped from that queue 
+zmq_pub_hwm: 250 # it's recommended to keep this number the same as sub_hwm in the extractor, otherwise one or the other queue could fill up and never empty, causing OOM errors.
+

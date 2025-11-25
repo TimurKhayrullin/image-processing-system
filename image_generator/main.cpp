@@ -4,6 +4,7 @@
 #include "image_generator.hpp"
 #include <iostream>
 #include <string>
+#include <yaml-cpp/yaml.h>
 #include <zmq.hpp>
 #include <chrono>
 
@@ -21,6 +22,9 @@ int main(int argc, char* argv[]) {
     }
 
     print_banner("Image Generator Started");
+
+    // read in config file
+    YAML::Node config = YAML::LoadFile("configs/image_generator/config.yml");
     
     // inititalizes signals for graceful shutdown
     ShutdownHandler::init();     
@@ -46,24 +50,28 @@ int main(int argc, char* argv[]) {
     zmq::context_t ctx{1}; // init context with 1 internal thread used for asynchronous sending/receiving.
     zmq::socket_t sender(ctx, zmq::socket_type::pub);
 
-    // Allow at most 250 queued messages in internal zmq queue 
-    sender.set(zmq::sockopt::sndhwm, 250);
+    // set max queued messages in internal zmq queue, as per config
+    sender.set(zmq::sockopt::sndhwm, config["zmq_pub_hwm"].as<int>());
 
     // connect to Unix domain socket for image publishing, UDS is a fast single-machine IPC mechanism
-    sender.connect("ipc:///tmp/camera_pub.sock");
+    // UDS address is read in from yaml config
+    sender.connect(config["zmq_pub_socket"].as<std::string>());
 
     // keeps track of how many frames have been loaded and sent
     uint64_t frame_count = 0;
-    std::optional<uint64_t> frame_limit = std::nullopt; // std::nullopt for no limit
+    // sets frame_limit to std::nullopt for no limit (config value is null) otherwise frame_limit int from config
+    std::optional<uint64_t> frame_limit;
+    if(config["frame_limit"].IsNull()) frame_limit = std::nullopt;
+    else frame_limit = config["frame_limit"].as<uint64_t>();
 
     // keeps track of timestamps and frames/bytes for throughput monitoring
     uint64_t frames_since_last_report = 0;
     uint64_t one_second = 1e9;
     uint64_t local_timestamp_last_report = get_timestamp_ns_utc();
     
-    double max_mbps = 600.0;   // configure desired throughput rate
+    double max_mbps = config["max_throughput_mbps"].as<double>(); // read desired max throughput rate from config, in megabytes per second
     uint64_t bytes_since_last_report = 0;
-    uint64_t throughput_limit = (uint64_t)(max_mbps * 1024.0 * 1024.0); // max bytes per second
+    uint64_t throughput_limit = (uint64_t)(max_mbps * 1024.0 * 1024.0); // max bytes per second conversion
     uint64_t total_bytes = 0;
 
     // keep track of bytes sent every time we send
