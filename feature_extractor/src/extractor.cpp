@@ -42,11 +42,6 @@ SIFTExtractionJob::SIFTExtractionJob(SIFTParams &params, cv::Ptr<cv::SIFT> &sift
 // process image
 void SIFTExtractionJob::extract_features(cv::Mat &img){
 
-    // correct bit depth of image for processing
-    if(img.type() == 18){
-        img.convertTo(img, CV_8U, 1.0 / 256.0);
-    }
-
     this->sift_ptr->detectAndCompute(img, cv::noArray(), this->keypoints, this->descriptors);
 
     this->timestamp_processed_ns = get_timestamp_ns_utc();

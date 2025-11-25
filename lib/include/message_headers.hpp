@@ -11,7 +11,7 @@ struct ImageHeader {
     uint32_t width;
     uint32_t height;
     uint32_t channels;
-    uint32_t pixel_format;      // e.g. RGB8, GRAY8
+    char format_fourcc[4];      // four character code for image format (eg "PNG\0")
     uint64_t frame_number;
     uint64_t timestamp_ns;
     uint64_t image_size_bytes;

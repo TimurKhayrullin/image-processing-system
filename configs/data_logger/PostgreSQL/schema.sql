@@ -4,12 +4,11 @@ CREATE TABLE IF NOT EXISTS payloads (
     -- data_logger
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     timestamp_insert_ns BIGINT,
-    width INT,
     -- image
     width INT,
     height INT,
     channels INT,
-    pixel_format INT,
+    image_format_fourcc CHAR(4),
     frame_number BIGINT,
     timestamp_captured_ns BIGINT,
     image_size_bytes BIGINT,

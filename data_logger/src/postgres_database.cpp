@@ -89,29 +89,6 @@ bool PostgresDatabase::setup_schema() {
 
         txn.exec(query.str());
 
-
-        // for (auto it = tables.begin(); it != tables.end(); ++it) {
-        //     if (!it->second["enabled"].as<bool>()) continue;
-
-        //     std::ostringstream query;
-        //     query << "CREATE TABLE IF NOT EXISTS "
-        //           << it->second["name"].as<std::string>() << " (";
-
-        //     const auto& cols = it->second["columns"];
-        //     bool first = true;
-        //     for (auto c = cols.begin(); c != cols.end(); ++c) {
-        //         if (!first) query << ", ";
-        //         first = false;
-        //         query << c->first.as<std::string>() << " "
-        //               << c->second.as<std::string>();
-        //     }
-        //     query << ");";
-
-        //     std::cout << query.str() << std::endl;
-
-        //     txn.exec(query.str());
-        // }
-
         txn.commit();
         std::cout << "Schema verified for database: " << dbName << std::endl;
         return true;
@@ -126,7 +103,7 @@ void PostgresDatabase::prepareStatements() {
     connection->prepare(
         "insert_payload",
         "INSERT INTO payloads ("
-            "timestamp_insert_ns, width, height, channels, pixel_format, frame_number,"
+            "timestamp_insert_ns, width, height, channels, image_format_fourcc, frame_number,"
             "timestamp_captured_ns, image_size_bytes, image_data,"
             "sift_param_n_features, sift_param_n_octave_layers,"
             "sift_param_contrast_threshold, sift_param_edge_threshold, sift_param_sigma,"
@@ -231,24 +208,20 @@ bool PostgresDatabase::performInsert(pqxx::work& txn, const Payload& payload, ui
 {
 
     // ---- ZERO-COPY BINARY WRAPPING ----
-    const void* img_ptr  = payload.pixels.data();
-    std::size_t img_size = payload.pixels.size();
 
-    const void* kp_ptr   = payload.keypoints.data();
-    std::size_t kp_size  = payload.keypoints.size() * sizeof(KeyPointPortable);
+    // Wrap for pqxx BYTEA
+    std::basic_string<std::byte> img_bytes(
+        reinterpret_cast<const std::byte*>(payload.pixels.data()),
+        payload.pixels.size());
 
-    const void* desc_ptr = payload.desc_mat.data();
-    std::size_t desc_size = payload.desc_mat.size();
+    std::basic_string<std::byte> kp_bytes(
+        reinterpret_cast<const std::byte*>(payload.keypoints.data()),
+        payload.keypoints.size() * sizeof(KeyPointPortable));
 
-    //suppress warnings
-
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    pqxx::binarystring img_bytes(img_ptr, img_size);
-    pqxx::binarystring kp_bytes(kp_ptr, kp_size);
-    pqxx::binarystring desc_bytes(desc_ptr, desc_size);
-    #pragma GCC diagnostic pop
-    
+    std::basic_string<std::byte> desc_bytes(
+        reinterpret_cast<const std::byte*>(payload.desc_mat.data()),
+        payload.desc_mat.size());
+            
     // this is marked depracted, but this version of libpqxx doesn't have the newer API for prepared statements
     // and newer version is c++20 only.
     txn.exec_prepared(
@@ -257,7 +230,7 @@ bool PostgresDatabase::performInsert(pqxx::work& txn, const Payload& payload, ui
         payload.image_header.width,
         payload.image_header.height,
         payload.image_header.channels,
-        payload.image_header.pixel_format,
+        payload.image_header.format_fourcc,
         payload.image_header.frame_number,
         payload.image_header.timestamp_ns,
         payload.image_header.image_size_bytes,

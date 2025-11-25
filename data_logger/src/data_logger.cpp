@@ -2,6 +2,7 @@
 #include "message_headers.hpp"
 #include "feature_serialization.hpp"
 #include <zmq.hpp>
+#include <iostream>
 
 bool recv_payload(
     zmq::socket_t& socket,
@@ -12,8 +13,12 @@ bool recv_payload(
     // FRAME 0: Image Header  (zero-copy)
     // -------------------------------------------------------
     zmq::message_t img_header_msg;
-    if (!socket.recv(img_header_msg, zmq::recv_flags::none))
+    if (!socket.recv(img_header_msg, zmq::recv_flags::none)){
+
+        std::cout << "nothing\n";
         return false;
+
+    }
 
     if (img_header_msg.size() != sizeof(ImageHeader))
         throw std::runtime_error("Invalid image header size");

@@ -145,7 +145,7 @@ sudo -u postgres psql -d telemetry
 
 ### delete database
 ```bash
-psql -U postgres -c "DROP DATABASE telemetry;"
+sudo -u postgres psql -c "DROP DATABASE telemetry;"
 ```
 ### clear the data in the database but keep defined tables and columns
 ```bash

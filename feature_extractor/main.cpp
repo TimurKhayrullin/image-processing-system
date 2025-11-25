@@ -7,10 +7,6 @@
 #include <opencv2/features2d.hpp>
 #include <iostream>
 #include <string>
-#include <csignal>
-#include <atomic>
-#include <algorithm> // For std::transform
-#include <cctype>    // For std::toupper
 #include <numeric>
 #include <future>
 #include <zmq.hpp>
@@ -38,6 +34,8 @@ int main() {
     // Create a ZeroMQ context and subscriber socket
     zmq::context_t ctx{1};
     zmq::socket_t subscriber(ctx, zmq::socket_type::sub);
+    // Limit inbound queue to 250 messages
+    subscriber.set(zmq::sockopt::rcvhwm, 250);
     zmq::socket_t publisher(ctx, zmq::socket_type::pub);
 
     // bind to the same IPC socket the image generator bound to
@@ -48,6 +46,7 @@ int main() {
 
     // Subscribe to all messages (empty filter = all topics)
     subscriber.set(zmq::sockopt::subscribe, "");
+    subscriber.set(zmq::sockopt::rcvtimeo, 500);   // 0.5s timeout
 
     std::cout << "Listening for messages on ipc:///tmp/camera_pub.sock ..." << std::endl;
 
@@ -106,12 +105,10 @@ int main() {
             // prepare image + features payload
             FeaturesHeader features_header;
             ImageHeader img_header;
-            cv::Mat img;
-            zmq::message_t header_msg;
-            zmq::message_t pixels_msg;
+            std::vector<uint8_t> image_data; // openCV doesn't have a mat std::byte constructor for Mat so we use uint8_t 
 
             // recieve image, preserve messages for sending to data logger
-            if (!recv_image_as_mat(subscriber, header_msg, pixels_msg, img_header, img)){
+            if (!recv_image(subscriber, img_header, image_data)){
                 continue;
             }
 
@@ -131,12 +128,11 @@ int main() {
                     mt_do_extraction,
                     frame_count,
                     std::ref(ctx),
-                    std::move(header_msg),
-                    std::move(pixels_msg),
+                    img_header,
+                    std::move(image_data),
                     params,
                     sift_ptr,
-                    features_header,   
-                    std::move(img))
+                    std::move(features_header))
             );
             local_timestamp_payload_sent = get_timestamp_ns_utc();
             local_timestamp_latest_send = local_timestamp_payload_sent;
@@ -179,6 +175,11 @@ int main() {
             std::cerr << "ZMQ error: " << e.what() << std::endl;
         }
     }
+
+    subscriber.set(zmq::sockopt::linger, 0); // Drop any unsent messages immediately. Do NOT block on socket close.
+    subscriber.close();
+    publisher.close();
+    ctx.close();
 
     print_banner("Feature Extractor Terminated");
 

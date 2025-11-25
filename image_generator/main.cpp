@@ -2,7 +2,6 @@
 #include "shutdown_handler.hpp"
 #include "message_headers.hpp"
 #include "image_generator.hpp"
-#include "image_readers.hpp"
 #include <iostream>
 #include <string>
 #include <zmq.hpp>
@@ -48,14 +47,13 @@ int main(int argc, char* argv[]) {
         std::cout << "directory is empty.\n";
         return 0;
     }
-    
-    // Setup image reader 
-    ImageReaderFactory factory;
 
     // ZeroMQ for easy ICP customization, abstraction.
     // Here we implement the publisher/subscriber pattern using Unix domain sockets
     zmq::context_t ctx{1}; // init context with 1 internal thread used for asynchronous sending/receiving.
     zmq::socket_t sender(ctx, zmq::socket_type::pub);
+    // Allow at most N queued messages in internal zmq queue 
+    sender.set(zmq::sockopt::sndhwm, 250);
     sender.connect("ipc:///tmp/camera_pub.sock");
 
     // keeps track of how many frames have been read
@@ -68,7 +66,7 @@ int main(int argc, char* argv[]) {
     uint64_t total_bytes = 0;
 
     // averaging calculations
-    std::optional<uint64_t> frame_limit = std::nullopt; // std::nullopt for no limit
+    std::optional<uint64_t> frame_limit = 200; //std::nullopt; // std::nullopt for no limit
     uint64_t local_timestamp_first_send = 0;
     uint64_t local_timestamp_latest_send = 0;
 
@@ -86,18 +84,13 @@ int main(int argc, char* argv[]) {
 
             // get reader for given file
             std::string filepath = entry.path().string();
-            const ImageReader* reader = factory.get_reader(filepath);
-            if (!reader) {
-                std::cerr << "[WARN] No reader for " << filepath << "\n";
-                continue;
-            }
             
             // setup message payload
             ImageHeader header;
-            std::vector<unsigned char> pixels;
+            std::vector<std::byte> image_data;
 
-            // loads image info and pixels into header and pixel vector
-            if (!reader->load(filepath, pixels, header)) {
+            // loads image info and image data into header and data vector
+            if (!load_image(filepath, header, image_data)) {
                 std::cerr << "[WARN] Failed to load: " << filepath << "\n";
                 continue;
             }
@@ -112,9 +105,9 @@ int main(int argc, char* argv[]) {
             // publish the image header and pixels via ZeroMQ, using a multipart message.
             // using a multipart message minimizes buffer allocations and copies. Also allows streaming.
             // ---- Frame 0: header ----
-            sender.send(zmq::buffer(&header, sizeof(header)), zmq::send_flags::sndmore);
+            sender.send(zmq::buffer(&header, sizeof(header)), zmq::send_flags::sndmore | zmq::send_flags::dontwait);
             // ---- Frame 1: pixel bytes ----
-            sender.send(zmq::buffer(pixels.data(), header.image_size_bytes),
+            sender.send(zmq::buffer(image_data.data(), header.image_size_bytes),
                         zmq::send_flags::none);
 
             local_timestamp_latest_send = get_timestamp_ns_utc();
@@ -122,6 +115,7 @@ int main(int argc, char* argv[]) {
 
             total_bytes += sizeof(header);
             total_bytes += header.image_size_bytes;
+            // dir_it++;
             // std::cout << "Sent image #" << header.frame_number << " ("
             //         << header.width << "x" << header.height << ", of type " << header.pixel_format << ", with size " << header.image_size_bytes << " bytes)\n";
             
@@ -138,6 +132,10 @@ int main(int argc, char* argv[]) {
 
     }
 
+    sender.set(zmq::sockopt::linger, 0); // Drop any unsent messages immediately. Do NOT block on socket close.
+    sender.close();
+    ctx.close();
+
     print_banner("Image Generator Terminated");
 
     // throughput calculation
@@ -147,8 +145,6 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Total frames sent: " << frame_count << "\n";
     std::cout << "Average throughput: " << mbps << " mb per second\n";
-
-
 
     return 0;
 }

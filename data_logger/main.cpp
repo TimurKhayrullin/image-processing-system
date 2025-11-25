@@ -26,12 +26,15 @@ int main() {
     // Create a ZeroMQ context and subscriber socket
     zmq::context_t ctx{1};
     zmq::socket_t subscriber(ctx, zmq::socket_type::sub);
+    // Allow at most N queued messages in internal zmq queue 
+    subscriber.set(zmq::sockopt::sndhwm, 1000);
 
     // Connect to the same IPC socket the Feature extractor is bound to
     subscriber.bind("ipc:///tmp/features_pub.sock");
 
     // Subscribe to all messages (empty filter = all topics)
     subscriber.set(zmq::sockopt::subscribe, "");
+    subscriber.set(zmq::sockopt::rcvtimeo, 500);   // 0.5s timeout
 
     std::cout << "Listening for messages on ipc:///tmp/features_pub.sock ..." << std::endl;
 
