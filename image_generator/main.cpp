@@ -48,6 +48,8 @@ int main(int argc, char* argv[]) {
 
     // Allow at most 250 queued messages in internal zmq queue 
     sender.set(zmq::sockopt::sndhwm, 250);
+
+    // connect to Unix domain socket for image publishing, UDS is a fast single-machine IPC mechanism
     sender.connect("ipc:///tmp/camera_pub.sock");
 
     // keeps track of how many frames have been loaded and sent

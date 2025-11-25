@@ -4,6 +4,7 @@
 #include <vector>
 #include <opencv2/features2d.hpp>
 
+// we use pragma pack(push, 1) for lining up struct members contiguously
 #pragma pack(push, 1)
 struct KeyPointPortable {
     float x;
@@ -16,6 +17,7 @@ struct KeyPointPortable {
 };
 #pragma pack(pop)
 
+// helpers for serializing/deserializing keypoints from binary
 inline std::vector<KeyPointPortable>
 serialize_keypoints(const std::vector<cv::KeyPoint>& keypoints)
 {
@@ -58,6 +60,7 @@ deserialize_keypoints(const KeyPointPortable* raw, size_t count)
     return keypoints;
 }
 
+// helper functions to serialize/deserialize descriptor vectors to/from binary blobs
 inline std::vector<std::byte>
 serialize_descriptors(const cv::Mat& descriptors)
 {

@@ -1,3 +1,4 @@
+// general helper functions used by all executables
 #pragma once
 #include <string>
 #include <iostream>

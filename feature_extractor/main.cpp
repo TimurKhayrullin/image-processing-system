@@ -11,10 +11,13 @@
 #include <future>
 #include <zmq.hpp>
 
+
+// the feature extractor receives image data and processes it to find key features then
+// publish the original image and the extracted features for other applications to consume.
 int main() {
     print_banner("Feature Extractor Started");
 
-    // <--- install signal handlers for shutdown
+    // inititalizes signals for graceful shutdown
     ShutdownHandler::init(); 
     
     // read in SIFT extraction parameters from config
@@ -34,15 +37,15 @@ int main() {
     // Create a ZeroMQ context and subscriber socket
     zmq::context_t ctx{1};
     zmq::socket_t subscriber(ctx, zmq::socket_type::sub);
+
     // Limit inbound queue to 250 messages
     subscriber.set(zmq::sockopt::rcvhwm, 250);
-    zmq::socket_t publisher(ctx, zmq::socket_type::pub);
 
-    // bind to the same IPC socket the image generator bound to
+    // bind to the same IPC socket the image generator connects to
     subscriber.bind("ipc:///tmp/camera_pub.sock");
 
     // connect to the IPC socket for processed image output
-    publisher.connect("ipc:///tmp/features_pub.sock");
+
 
     // Subscribe to all messages (empty filter = all topics)
     subscriber.set(zmq::sockopt::subscribe, "");
@@ -67,7 +70,7 @@ int main() {
     std::vector<uint64_t> proc_times;
     proc_times.reserve(frame_limit.value_or(10000));
 
-
+    // initializing vector of thread futures used to optionally parallelize SIFT extraction 
     std::vector<std::future<std::tuple<uint64_t, uint64_t, uint64_t>>> futures;
     const size_t MAX_TASKS = 1; // TODO: move to config
 
@@ -97,6 +100,7 @@ int main() {
                     
             }
 
+            // exit if frame limit reached in case there is one
             if(frame_limit && frame_count >= frame_limit) break;
 
             // Limit concurrency
@@ -134,6 +138,8 @@ int main() {
                     sift_ptr,
                     std::move(features_header))
             );
+
+            // timestamps for throughput average calculation
             local_timestamp_payload_sent = get_timestamp_ns_utc();
             local_timestamp_latest_send = local_timestamp_payload_sent;
             local_timestamp_first_send = local_timestamp_first_send ? local_timestamp_first_send : local_timestamp_latest_send; // sets first send to latest send if first send is 0, otherwise does nothing
@@ -177,20 +183,19 @@ int main() {
     }
 
     subscriber.set(zmq::sockopt::linger, 0); // Drop any unsent messages immediately. Do NOT block on socket close.
+
+    // close IPC connections
     subscriber.close();
-    publisher.close();
     ctx.close();
 
     print_banner("Feature Extractor Terminated");
 
+    // Average throughput and processing time calculation + reporting
     std::cout << "Total frames sent: " << frame_count << "\n";
-
     auto const count = static_cast<float>(proc_times.size());
     float avg_proc_time = std::reduce(proc_times.begin(), proc_times.end()) / count;
-
     std::cout << "Average processing time: " << avg_proc_time / one_second << " seconds per frame\n";
 
-    // throughput calculation
     uint64_t elapsed_ns = local_timestamp_latest_send - local_timestamp_first_send;
     double elapsed_s    = elapsed_ns / one_second;
     double mbps = (total_bytes / elapsed_s) / (1024.0 * 1024.0);

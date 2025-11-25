@@ -1,3 +1,5 @@
+// the ShutdownHandler class is used to make sure each executable shuts down gracefully
+
 #include "shutdown_handler.hpp"
 #include <string>
 #include <iostream>

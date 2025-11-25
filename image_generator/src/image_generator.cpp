@@ -1,3 +1,5 @@
+// implementations for helper functions the image generator uses to partially decode image files, as well as load them into memory
+
 #include "message_headers.hpp"
 #include "image_generator.hpp"
 #include <vector>

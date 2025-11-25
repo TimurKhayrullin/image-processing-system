@@ -1,3 +1,5 @@
+// header for graceful shutdown routine
+
 #pragma once
 #include <atomic>
 #include <csignal>

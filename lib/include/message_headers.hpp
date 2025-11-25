@@ -29,7 +29,6 @@ struct SIFTParams {
 }; 
 
 // struct for packaging keypoint + feature messages to send them over IPC
-// use class factory, optoinally.
 struct FeaturesHeader {
     
     SIFTParams params;

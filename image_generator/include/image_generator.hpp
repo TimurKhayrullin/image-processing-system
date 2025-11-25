@@ -1,3 +1,5 @@
+// header file for image generator helpers
+
 #pragma once
 
 #include <string>
