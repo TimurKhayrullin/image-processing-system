@@ -59,32 +59,58 @@ int main(int argc, char* argv[]) {
     // keeps track of how many frames have been read
     uint64_t frame_count = 0;
 
-    // keeps track of timestamps for throughput monitoring
+    // keeps track of timestamps and frames/bytes for throughput monitoring
     uint64_t frames_since_last_report = 0;
     uint64_t one_second = 1e9;
     uint64_t local_timestamp_last_report = get_timestamp_ns_utc();
+    
+    double max_mbps = 600.0;   // <--- configure desired rate
+    uint64_t bytes_since_last_report = 0;
+    uint64_t throughput_limit = (uint64_t)(max_mbps * 1024.0 * 1024.0); // max bytes per second
     uint64_t total_bytes = 0;
 
+    // keep track of bytes sent every time we send
+    uint64_t payload_bytes = 0;
+
     // averaging calculations
-    std::optional<uint64_t> frame_limit = 200; //std::nullopt; // std::nullopt for no limit
+    std::optional<uint64_t> frame_limit = std::nullopt; // std::nullopt for no limit
     uint64_t local_timestamp_first_send = 0;
     uint64_t local_timestamp_latest_send = 0;
+    uint64_t local_timestamp_last_loadsend_attempt = 0;
+
+    // initialize directory iterator
+    fs::directory_iterator dir_it = fs::directory_iterator(path);
+    fs::directory_iterator dit_it_end = fs::end(dir_it); // end of directory
+
 
     // Publishes all the images to the zmq topic, and once all of them have been published loops over them again
     while (ShutdownHandler::running()) {
 
-        // iterate over entire directory, creating a new iterator with each new loop.
-        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+        // if we reached end of directory, restart
+        if (dir_it == dit_it_end) {
+            dir_it = std::filesystem::directory_iterator(path);
+        }
 
-            if(frame_limit && frame_count >= frame_limit) break; // break once frame limit is reached if there is one
-            if(!ShutdownHandler::running()) break;
+        if(frame_limit && frame_count >= frame_limit) break; // break once frame limit is reached if there is one
 
-            if (!entry.is_regular_file())
-                continue;
+        if(!ShutdownHandler::running()) break;
+
+        // skip file if it isn't a regular file
+        if (!(*dir_it).is_regular_file()){
+            dir_it++;
+            continue;
+        }
+
+        // if throughput limit reached, skip loading and sending file (but keep same file iterator)
+        if(bytes_since_last_report > throughput_limit){
+
+            local_timestamp_last_loadsend_attempt = get_timestamp_ns_utc();
+        }
+        else{
 
             // get reader for given file
-            std::string filepath = entry.path().string();
-            
+            std::string filepath = (*dir_it).path().string();
+                
             // setup message payload
             ImageHeader header;
             std::vector<std::byte> image_data;
@@ -97,8 +123,7 @@ int main(int argc, char* argv[]) {
 
             // mark payload with timestamp and frame number
             header.timestamp_ns = get_timestamp_ns_utc();
-            header.frame_number = frame_count++;
-            frames_since_last_report++;
+            header.frame_number = frame_count;
 
             if(!ShutdownHandler::running()) break;
 
@@ -110,25 +135,26 @@ int main(int argc, char* argv[]) {
             sender.send(zmq::buffer(image_data.data(), header.image_size_bytes),
                         zmq::send_flags::none);
 
-            local_timestamp_latest_send = get_timestamp_ns_utc();
-            local_timestamp_first_send = local_timestamp_first_send ? local_timestamp_first_send : local_timestamp_latest_send; // sets first send to latest send if first send is 0, otherwise does nothing
+            local_timestamp_last_loadsend_attempt = get_timestamp_ns_utc();
+            local_timestamp_latest_send = local_timestamp_last_loadsend_attempt;
+            local_timestamp_first_send = local_timestamp_first_send ? local_timestamp_first_send : local_timestamp_last_loadsend_attempt; // sets first send to latest send if first send is 0, otherwise does nothing
 
-            total_bytes += sizeof(header);
-            total_bytes += header.image_size_bytes;
-            // dir_it++;
-            // std::cout << "Sent image #" << header.frame_number << " ("
-            //         << header.width << "x" << header.height << ", of type " << header.pixel_format << ", with size " << header.image_size_bytes << " bytes)\n";
+            payload_bytes = sizeof(header) + header.image_size_bytes;
+            total_bytes += payload_bytes;
+            bytes_since_last_report += payload_bytes;
             
-            //throughput monitoring
-            if ((local_timestamp_latest_send - local_timestamp_last_report) > one_second) {
-                std::cout << frame_count << "/" << (frame_limit ? std::to_string(*frame_limit) : "inf") << ", Throughput: " << frames_since_last_report << " FPS\n"; 
-                frames_since_last_report = 0; 
-                local_timestamp_last_report = local_timestamp_latest_send;
-            }
-
+            frames_since_last_report++;
+            frame_count++;
+            dir_it++;
         }
 
-        if(frame_limit && frame_count >= frame_limit) break; // break once frame limit is reached if there is one
+        // throughput monitoring
+        if ((local_timestamp_last_loadsend_attempt - local_timestamp_last_report) > one_second) {
+            std::cout << frame_count << "/" << (frame_limit ? std::to_string(*frame_limit) : "inf") << ", Throughput: " << bytes_since_last_report/(1024*1024) << " MB/sec, " << frames_since_last_report << " FPS\n"; 
+            local_timestamp_last_report = local_timestamp_last_loadsend_attempt;
+            frames_since_last_report = 0; 
+            bytes_since_last_report = 0;
+        }
 
     }
 

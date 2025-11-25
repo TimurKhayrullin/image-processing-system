@@ -1,5 +1,5 @@
 # image-processing-system
-This is a distributed image processing system built in C++, capable of generating, processing and storing data.
+This is a distributed image processing system built in C++, capable of generating, processing and storing data. it was tested on Linux (Ubuntu 24.04.3 LTS)
 
 ## Structure
 - `include/` — shared headers accessible by all executables  
@@ -66,21 +66,8 @@ sudo apt-get install libpqxx-dev
 sudo apt-get install postgresql postgresql-contrib
 ```
 
-### MacOS:
-For MacOS we used the brew package manager: https://brew.sh/ 
-```bash
-brew install zmq 
-brew install cppzmq
-brew install libpqxx 
-brew install yaml-cpp     
-brew install libpq 
-brew install cmake
-brew install opencv
-```
-
 ## 3) Start and configure database
 
-# Linux (Tested with Ubuntu 24.04.3 LTS)
 First, start the postgres service:
 ```bash
 sudo systemctl start postgresql # start postgres service
@@ -89,17 +76,6 @@ sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'mypass';" # set superuse
 createdb -h 127.0.0.1 -U postgres telemetry # create database called "telemetry"
 sudo -u postgres psql -lqt | grep -w telemetry # check that the database was created, should output something like "telemetry | postgres | UTF8 ..."
 ```
-
-# MacOS (requires Docker Desktop):
-```bash
-brew services start postgresql@16
-docker run --name pg -e POSTGRES_PASSWORD=mypass -e POSTGRES_DB=telemetry -p 5432:5432 -d postgres:16
-createuser -s postgres             // if the role doesn't exist
-psql -h 127.0.0.1 -U postgres -c "ALTER USER postgres PASSWORD 'mypass';"
-createdb -h 127.0.0.1 -U postgres telemetry
-psql -h 127.0.0.1 -U postgres -p 5432 -W
-```
-
 
 ## 4) Build image-processing-system binary
 To build all 3 executables (image_generator, feature_extractor, data_logger) at once, run the following bash from a terminal set to the main project directory:
@@ -117,21 +93,10 @@ cd image_generator && make
 ```
 
 
-## Start Database server
-# MacOS:
-```bash
-brew services start postgresql@16
-docker run --name pg -e POSTGRES_PASSWORD=mypass -e POSTGRES_DB=telemetry -p 5432:5432 -d postgres:16
-createuser -s postgres             // if the role doesn't exist
-psql -h 127.0.0.1 -U postgres -c "ALTER USER postgres PASSWORD 'mypass';"
-createdb -h 127.0.0.1 -U postgres telemetry
-psql -h 127.0.0.1 -U postgres -p 5432 -W
-```
-
 ## 5) Run applications
 To run the applications, invoke the respective executable found in the build folder. here are examples for invoking all 3 from the top-level project directory
 ```bash
-./build/image_generator/image_generator
+./build/image_generator/image_generator \[folder path\]
 ./build/feature_extractor/feature_extractor
 ./build/data_logger/data_logger
 ```
@@ -152,7 +117,7 @@ sudo -u postgres psql -c "DROP DATABASE telemetry;"
 sudo -u postgres psql -d telemetry -c "TRUNCATE TABLE payloads RESTART IDENTITY;"
 ```
 
-## Links to d used for testing
+## Links to datasets used for testing
 ### small 
 https://li-chongyi.github.io/proj_benchmark.html 
 https://github.com/dlut-dimt/Realworld-Underwater-Image-Enhancement-RUIE-Benchmark/blob/master/UIQS.rar 

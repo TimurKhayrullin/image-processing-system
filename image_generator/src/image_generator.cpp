@@ -68,9 +68,13 @@ bool detect_fourcc(const std::vector<std::byte>& buf, char (&fourcc)[4])
     }
 
     // ---- UNKNOWN ----
-    throw std::runtime_error("Failed to get image format: unsupported or unknown image format.");
+    // throw std::runtime_error("Failed to get image format: unsupported or unknown image format.");
+    // return false;
 
-    return false;
+    // if unable to decode fourcc, put placeholder
+    make_fourcc(fourcc, 'X', 'X', 'X', 'X');
+
+    return true;
 }
 
 bool load_file_bytes(const std::string& path, std::vector<std::byte> &buffer)
