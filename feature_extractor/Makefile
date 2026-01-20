@@ -3,15 +3,16 @@ CXX := g++
 INCLUDES := \
     -I../lib/include \
     -Iinclude \
-	-I/usr/local/include/opencv4
+	-I/opt/homebrew/include \
+    -I/opt/homebrew/include/opencv4
+#     -I/usr/local/include/opencv4 # LINUX
 
 CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP
 
 LDFLAGS := \
 	-L../build/lib \
     -lshared \
-	-L/usr/lib \
-	-L/usr/lib/x86_64-linux-gnu \
+	-L/opt/homebrew/lib \
 	-lyaml-cpp \
 	-lzmq \
 	-lopencv_core \
@@ -19,6 +20,9 @@ LDFLAGS := \
     -lopencv_highgui \
     -lopencv_imgproc \
     -lopencv_features2d
+
+# 	-L/usr/lib \ # LINUX
+# 	-L/usr/lib/x86_64-linux-gnu \
 
 SRC_DIR := src
 OBJ_DIR := ../build/feature_extractor

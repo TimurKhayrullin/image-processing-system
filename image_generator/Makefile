@@ -7,7 +7,9 @@ CXX := g++
 INCLUDES := \
     -I../lib/include \
     -Iinclude \
-    -I/usr/local/include/opencv4
+    -I/opt/homebrew/include \
+    -I/opt/homebrew/include/opencv4
+#     -I/usr/local/include/opencv4 # LINUX
 
 # ------------------------------------------------------------
 # Compiler and linker flags
@@ -18,8 +20,7 @@ CXXFLAGS := -std=c++17 -Wall -Wextra $(INCLUDES) -MMD -MP  # -g -fno-omit-frame-
 LDFLAGS := \
     -L../build/lib \
     -lshared \
-    -L/usr/lib \
-    -L/usr/lib/x86_64-linux-gnu \
+    -L/opt/homebrew/lib \
     -lyaml-cpp \
     -lzmq \
     -lopencv_core \
@@ -27,6 +28,9 @@ LDFLAGS := \
     -lopencv_highgui \
     -lopencv_imgproc \
     -lopencv_features2d \
+
+#     -L/usr/lib \ # LINUX
+#     -L/usr/lib/x86_64-linux-gnu \
 
 # ------------------------------------------------------------
 # Directory setup
