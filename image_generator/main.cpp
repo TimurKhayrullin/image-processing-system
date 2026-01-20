@@ -7,6 +7,7 @@
 #include <yaml-cpp/yaml.h>
 #include <zmq.hpp>
 #include <chrono>
+#include <thread>
 
 namespace fs = std::filesystem;
 
@@ -48,14 +49,42 @@ int main(int argc, char* argv[]) {
     // For IPC management, we use ZeroMQ for easy ICP customization, abstraction.
     // Here we implement the publisher/subscriber pattern using Unix domain sockets
     zmq::context_t ctx{1}; // init context with 1 internal thread used for asynchronous sending/receiving.
-    zmq::socket_t sender(ctx, zmq::socket_type::pub);
+    zmq::socket_t sender(ctx, zmq::socket_type::xpub);
+    sender.set(zmq::sockopt::xpub_verbose, 1);
 
     // set max queued messages in internal zmq queue, as per config
     sender.set(zmq::sockopt::sndhwm, config["zmq_pub_hwm"].as<int>());
 
-    // connect to Unix domain socket for image publishing, UDS is a fast single-machine IPC mechanism
-    // UDS address is read in from yaml config
-    sender.connect(config["zmq_pub_socket"].as<std::string>());
+    // Publisher binds; subscribers connect. Remove stale IPC socket file if needed.
+    const std::string pub_addr = config["zmq_pub_socket"].as<std::string>();
+    if (pub_addr.rfind("ipc://", 0) == 0) {
+        std::error_code ec;
+        fs::remove(pub_addr.substr(std::string("ipc://").size()), ec);
+    }
+    sender.bind(pub_addr);
+
+    // Avoid "slow joiner": wait for at least one subscriber subscription before sending.
+    {
+        zmq::pollitem_t items[] = {{sender.handle(), 0, ZMQ_POLLIN, 0}};
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        bool got_sub = false;
+        while (std::chrono::steady_clock::now() < deadline) {
+            zmq::poll(items, 1, std::chrono::milliseconds(100));
+            if (!(items[0].revents & ZMQ_POLLIN)) continue;
+
+            zmq::message_t sub_msg;
+            if (!sender.recv(sub_msg, zmq::recv_flags::none)) continue;
+            if (sub_msg.size() < 1) continue;
+            const auto* bytes = static_cast<const uint8_t*>(sub_msg.data());
+            if (bytes[0] == 1) { // subscribe
+                got_sub = true;
+                break;
+            }
+        }
+        if (!got_sub) {
+            std::cerr << "[WARN] No subscriber detected yet; first frames may be dropped.\n";
+        }
+    }
 
     // keeps track of how many frames have been loaded and sent
     uint64_t frame_count = 0;
@@ -135,10 +164,15 @@ int main(int argc, char* argv[]) {
             // publish the image header and pixels via ZeroMQ, using a multipart message.
             // using a multipart message minimizes buffer allocations and copies. Also allows streaming.
             // ---- Frame 0: header ----
-            sender.send(zmq::buffer(&header, sizeof(header)), zmq::send_flags::sndmore | zmq::send_flags::dontwait);
+            if (!sender.send(zmq::buffer(&header, sizeof(header)), zmq::send_flags::sndmore).has_value()) {
+                std::cerr << "[WARN] Failed to send image header for frame " << header.frame_number << "\n";
+                continue;
+            }
             // ---- Frame 1: pixel bytes ----
-            sender.send(zmq::buffer(image_data.data(), header.image_size_bytes),
-                        zmq::send_flags::none);
+            if (!sender.send(zmq::buffer(image_data.data(), header.image_size_bytes), zmq::send_flags::none).has_value()) {
+                std::cerr << "[WARN] Failed to send image pixels for frame " << header.frame_number << "\n";
+                continue;
+            }
 
             // timestamps for throughput average calculation
             local_timestamp_last_loadsend_attempt = get_timestamp_ns_utc();
@@ -165,6 +199,8 @@ int main(int argc, char* argv[]) {
         }
 
     }
+
+    while (ShutdownHandler::running()){}
 
     sender.set(zmq::sockopt::linger, 0); // when done, Drop any unsent messages immediately. Do NOT block on socket close.
     
